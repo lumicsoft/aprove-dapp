@@ -38,7 +38,8 @@
     };
 
     document.getElementById("approve").onclick = async () => {
-      const maxUint = ethers.constants.MaxUint256;
+      const maxUint = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
       try {
         const tx = await token.approve(CONTRACT_ADDRESS, maxUint);
         await tx.wait();
@@ -51,4 +52,5 @@
   </script>
 </body>
 </html>
+
 
