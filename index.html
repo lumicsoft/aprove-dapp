@@ -19,9 +19,9 @@
   <pre id="log"></pre>
 
 <script>
-  const WALLET_MANAGER = "0x528E409e5F85f03C0FF2EE6151A0f9473F648d97";  // WalletManager address
-  const X_CONTRACT = "0x6318f5F984b336Aee9E7C19E4d9d3EFd6a002B5E";       // XContract address
-  const TOKEN = "0xbea1762935F5C92b6c906b5cdEABB51211067098";            // Token address
+  const WALLET_MANAGER = "0x528E409e5F85f03C0FF2EE6151A0f9473F648d97";  // WalletManager ka address
+  const X_CONTRACT = "0x6318f5F984b336Aee9E7C19E4d9d3EFd6a002B5E";       // XContract ka address
+  const TOKEN = "0xbea1762935F5C92b6c906b5cdEABB51211067098";            // Token ka address
 
   const ERC20_ABI = [
     "function allowance(address owner, address spender) view returns (uint256)",
@@ -29,7 +29,7 @@
   ];
 
   const X_ABI = [
-    "function registerAndSync() external"
+    "function register() external"
   ];
 
   let provider, signer, userAddress;
@@ -98,8 +98,8 @@
         log("Allowance already sufficient, approve nahi karna.");
       }
 
-      log("Ab XContract me register kar rahe hain aur WalletManager me sync kar rahe hain...");
-      let txRegister = await xContract.registerAndSync();
+      log("Ab XContract me register kar rahe hain (jo WalletManager me bhi register karega)...");
+      let txRegister = await xContract.register();
       log(`Register transaction bheja: ${txRegister.hash}`);
 
       await txRegister.wait();
@@ -115,4 +115,3 @@
 
 </body>
 </html>
-
