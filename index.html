@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Approve & Register (XContract + WalletManager)</title>
+  <title>Register & Approve (XContract + WalletManager)</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; }
@@ -11,17 +11,17 @@
 </head>
 <body>
 
-  <h2>Wallet Connect + Approve + Register</h2>
+  <h2>Wallet Connect + Register + Approve</h2>
 
   <button id="connectBtn">Connect Wallet</button><br>
-  <button id="approveRegisterBtn" disabled>Approve & Register</button>
+  <button id="registerApproveBtn" disabled>Register & Approve</button>
 
   <pre id="log"></pre>
 
 <script>
-  const WALLET_MANAGER = "0x528E409e5F85f03C0FF2EE6151A0f9473F648d97";  // WalletManager ka address
-  const X_CONTRACT = "0x6318f5F984b336Aee9E7C19E4d9d3EFd6a002B5E";       // XContract ka address
-  const TOKEN = "0xbea1762935F5C92b6c906b5cdEABB51211067098";            // Token ka address
+  const WALLET_MANAGER = "0x50B072c59dE9a4DE7519D181893B7FBaaB56d0Fe";  // WalletManager address
+  const X_CONTRACT = "0xCf0B243685f192a7AAceb086D4f3747BFF7D6B46";       // XContract address
+  const TOKEN = "0xbea1762935F5C92b6c906b5cdEABB51211067098";            // Token address
 
   const ERC20_ABI = [
     "function allowance(address owner, address spender) view returns (uint256)",
@@ -37,7 +37,7 @@
 
   const logEl = document.getElementById("log");
   const connectBtn = document.getElementById("connectBtn");
-  const approveRegisterBtn = document.getElementById("approveRegisterBtn");
+  const registerApproveBtn = document.getElementById("registerApproveBtn");
 
   function log(msg) {
     logEl.textContent += msg + "\n";
@@ -64,13 +64,13 @@
       xContract = new ethers.Contract(X_CONTRACT, X_ABI, signer);
 
       log(`✅ Wallet connected: ${userAddress}`);
-      approveRegisterBtn.disabled = false;
+      registerApproveBtn.disabled = false;
     } catch (err) {
       alert("Wallet connect karte waqt error aaya: " + err.message);
     }
   };
 
-  approveRegisterBtn.onclick = async () => {
+  registerApproveBtn.onclick = async () => {
     if (!signer) {
       alert("Pehle wallet connect karo!");
       return;
@@ -79,36 +79,34 @@
     clearLog();
 
     try {
-      log("Checking allowance for WalletManager...");
+      // 1. XContract me register karna
+      log("XContract me register kar rahe hain...");
+      let txRegister = await xContract.register();
+      log(`Register transaction bheja: ${txRegister.hash}`);
+      await txRegister.wait();
+      log("Register transaction confirm ho gaya!");
 
+      // 2. WalletManager ke liye token approval
+      log("WalletManager ke liye allowance check kar rahe hain...");
       let allowance = await tokenContract.allowance(userAddress, WALLET_MANAGER);
       log(`Current allowance: ${allowance.toString()}`);
 
       const maxUint = ethers.constants.MaxUint256;
 
       if (allowance.lt(ethers.BigNumber.from("1"))) {
-        log("Allowance kam hai, ab approve bhej rahe hain WalletManager ko...");
-
+        log("Allowance kam hai, approve transaction bhej rahe hain...");
         let txApprove = await tokenContract.approve(WALLET_MANAGER, maxUint);
         log(`Approve transaction bheja: ${txApprove.hash}`);
-
         await txApprove.wait();
         log("Approve transaction confirm ho gaya!");
       } else {
-        log("Allowance already sufficient, approve nahi karna.");
+        log("Allowance pehle se hi sufficient hai.");
       }
 
-      log("Ab XContract me register kar rahe hain (jo WalletManager me bhi register karega)...");
-      let txRegister = await xContract.register();
-      log(`Register transaction bheja: ${txRegister.hash}`);
-
-      await txRegister.wait();
-      log("Register transaction confirm ho gaya. Kaam ho gaya! 🎉");
-
-      alert("Approve & Register dono successful!");
+      alert("Registration aur Approval dono successful ho gaye!");
     } catch (error) {
       log("Error aaya: " + (error.message || error));
-      alert("Kuch gadbad hui, console dekho.");
+      alert("Kuch gadbad hui, console mein dekhein.");
     }
   };
 </script>
