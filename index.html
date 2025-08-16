@@ -1,52 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Register & Approve (WalletManager)</title>
+  <title>BBC DApp - Full Frontend</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; }
     button { padding: 10px 20px; font-size: 16px; margin: 10px 0; cursor: pointer; }
-    pre { background: #f0f0f0; padding: 15px; height: 200px; overflow-y: auto; border-radius: 5px; }
+    input { padding: 8px; width: 100%; margin: 5px 0; }
+    pre { background: #f0f0f0; padding: 15px; height: 250px; overflow-y: auto; border-radius: 5px; }
+    h3 { margin-top: 25px; }
   </style>
 </head>
 <body>
 
-  <h2>Wallet Connect + Register (WalletManager) + Approve</h2>
+  <h2>🔥 BBC Test DApp</h2>
 
-  <button id="connectBtn">Connect Wallet</button><br>
-  <button id="registerApproveBtn" disabled>Register & Approve</button>
+  <button id="connectBtn">🔗 Connect Wallet</button><br><br>
+
+  <h3>1️⃣ Register</h3>
+  <input type="text" id="referrer" placeholder="Referrer Address (use owner if none)">
+  <button id="registerBtn" disabled>Register</button><br>
+
+  <h3>2️⃣ Approve Spending</h3>
+  <input type="text" id="approveAmount" placeholder="Amount to Approve">
+  <button id="approveBtn" disabled>Approve</button><br>
+
+  <h3>3️⃣ Deposit</h3>
+  <input type="text" id="depositAmount" placeholder="Amount to Deposit">
+  <button id="depositBtn" disabled>Deposit</button><br>
+
+  <h3>4️⃣ Withdraw</h3>
+  <button id="withdrawBtn" disabled>Withdraw Earnings</button><br>
+
+  <h3>5️⃣ ROI Balance Check</h3>
+  <button id="checkBalanceBtn" disabled>Check My ROI Balance</button><br>
+  <div id="roiBalance"></div>
 
   <pre id="log"></pre>
 
 <script>
-  const WALLET_MANAGER = "0xE7868Fda3A7f3eA4C41f065Fc3bfB07030D0dc78";  // WalletManager address
-  const TOKEN = "0x7b5ba20d38600eD21587d40C7910106833ee3E69";           // Token address
+  // === Replace with your deployed addresses ===
+  const CONTRACT_ADDRESS = "0xDF8739aeaBf4B1855504F034B119c0551A067A71";   // 
+  const TOKEN_ADDRESS    = "0x7b5ba20d38600eD21587d40C7910106833ee3E69";      // 
 
+  // === Contract ABIs (minimal) ===
   const ERC20_ABI = [
     "function allowance(address owner, address spender) view returns (uint256)",
     "function approve(address spender, uint256 amount) returns (bool)"
   ];
 
-  const WALLET_MANAGER_ABI = [
-    "function register() external"
+  const CONTRACT_ABI = [
+    "function register(address _referrer) external",
+    "function deposit(uint256 _amount) external",
+    "function withdraw() external",
+    "function getUserDividends(address user) external view returns (uint256)"
   ];
 
   let provider, signer, userAddress;
-  let tokenContract, walletManagerContract;
+  let tokenContract, bbcContract;
 
   const logEl = document.getElementById("log");
   const connectBtn = document.getElementById("connectBtn");
-  const registerApproveBtn = document.getElementById("registerApproveBtn");
+  const registerBtn = document.getElementById("registerBtn");
+  const approveBtn = document.getElementById("approveBtn");
+  const depositBtn = document.getElementById("depositBtn");
+  const withdrawBtn = document.getElementById("withdrawBtn");
+  const checkBalanceBtn = document.getElementById("checkBalanceBtn");
+  const roiBalanceDiv = document.getElementById("roiBalance");
 
   function log(msg) {
     logEl.textContent += msg + "\n";
     logEl.scrollTop = logEl.scrollHeight;
     console.log(msg);
   }
-  function clearLog() {
-    logEl.textContent = "";
-  }
+  function clearLog() { logEl.textContent = ""; }
 
+  // 🔗 Connect Wallet
   connectBtn.onclick = async () => {
     if (!window.ethereum) {
       alert("MetaMask nahi mila! Please install MetaMask.");
@@ -59,58 +88,106 @@
       signer = provider.getSigner();
       userAddress = await signer.getAddress();
 
-      tokenContract = new ethers.Contract(TOKEN, ERC20_ABI, signer);
-      walletManagerContract = new ethers.Contract(WALLET_MANAGER, WALLET_MANAGER_ABI, signer);
+      tokenContract = new ethers.Contract(TOKEN_ADDRESS, ERC20_ABI, signer);
+      bbcContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
       log(`✅ Wallet connected: ${userAddress}`);
-      registerApproveBtn.disabled = false;
+      registerBtn.disabled = false;
+      approveBtn.disabled = false;
+      depositBtn.disabled = false;
+      withdrawBtn.disabled = false;
+      checkBalanceBtn.disabled = false;
     } catch (err) {
-      alert("Wallet connect karte waqt error aaya: " + err.message);
+      alert("Wallet connect karte waqt error: " + err.message);
     }
   };
 
-  registerApproveBtn.onclick = async () => {
-    if (!signer) {
-      alert("Pehle wallet connect karo!");
-      return;
-    }
-
-    clearLog();
-
+  // 🟢 Register
+  registerBtn.onclick = async () => {
     try {
-      // 1. WalletManager me register karna
-      log("WalletManager me register kar rahe hain...");
-      let txRegister = await walletManagerContract.register();
-      log(`Register transaction bheja: ${txRegister.hash}`);
-      await txRegister.wait();
-      log("✅ Register transaction confirm ho gaya!");
+      const referrer = document.getElementById("referrer").value;
+      if (!referrer) return alert("Referrer address daalo (ya owner address).");
 
-      // 2. WalletManager ke liye token approval
-      log("WalletManager ke liye allowance check kar rahe hain...");
-      let allowance = await tokenContract.allowance(userAddress, WALLET_MANAGER);
-      log(`Current allowance: ${allowance.toString()}`);
-
-      const maxUint = ethers.constants.MaxUint256;
-
-      if (allowance.lt(ethers.BigNumber.from("1"))) {
-        log("Allowance kam hai, approve transaction bhej rahe hain...");
-        let txApprove = await tokenContract.approve(WALLET_MANAGER, maxUint);
-        log(`Approve transaction bheja: ${txApprove.hash}`);
-        await txApprove.wait();
-        log("✅ Approve transaction confirm ho gaya!");
-      } else {
-        log("Allowance pehle se hi sufficient hai.");
-      }
-
-      alert("Registration aur Approval dono successful ho gaye!");
+      log("Register kar rahe hain...");
+      let tx = await bbcContract.register(referrer);
+      log(`Tx sent: ${tx.hash}`);
+      await tx.wait();
+      log("✅ Registration successful!");
     } catch (error) {
-      log("❌ Error aaya: " + (error.message || error));
-      alert("Kuch gadbad hui, console mein dekhein.");
+      log("❌ Register error: " + (error.message || error));
+    }
+  };
+
+  // 🟢 Approve Token
+  approveBtn.onclick = async () => {
+    try {
+      const amount = document.getElementById("approveAmount").value;
+      if (!amount) return alert("Approve amount daalo.");
+
+      const amtParsed = ethers.utils.parseUnits(amount, 18);
+
+      log("Allowance check kar rahe hain...");
+      let allowance = await tokenContract.allowance(userAddress, CONTRACT_ADDRESS);
+      log("Current allowance: " + allowance.toString());
+
+      if (allowance.lt(amtParsed)) {
+        log("Allowance kam hai, Approve kar rahe hain...");
+        let tx = await tokenContract.approve(CONTRACT_ADDRESS, amtParsed);
+        log("Tx sent: " + tx.hash);
+        await tx.wait();
+        log("✅ Approve successful!");
+      } else {
+        log("Allowance already sufficient.");
+      }
+    } catch (error) {
+      log("❌ Approve error: " + (error.message || error));
+    }
+  };
+
+  // 🟢 Deposit
+  depositBtn.onclick = async () => {
+    try {
+      const amount = document.getElementById("depositAmount").value;
+      if (!amount) return alert("Deposit amount daalo.");
+
+      const amtParsed = ethers.utils.parseUnits(amount, 18);
+
+      log("Deposit kar rahe hain...");
+      let tx = await bbcContract.deposit(amtParsed);
+      log("Tx sent: " + tx.hash);
+      await tx.wait();
+      log("✅ Deposit successful!");
+    } catch (error) {
+      log("❌ Deposit error: " + (error.message || error));
+    }
+  };
+
+  // 🟢 Withdraw
+  withdrawBtn.onclick = async () => {
+    try {
+      log("Withdraw kar rahe hain...");
+      let tx = await bbcContract.withdraw();
+      log("Tx sent: " + tx.hash);
+      await tx.wait();
+      log("✅ Withdraw successful!");
+    } catch (error) {
+      log("❌ Withdraw error: " + (error.message || error));
+    }
+  };
+
+  // 🟢 Check ROI Balance
+  checkBalanceBtn.onclick = async () => {
+    try {
+      log("ROI balance fetch kar rahe hain...");
+      let dividends = await bbcContract.getUserDividends(userAddress);
+      let readable = ethers.utils.formatUnits(dividends, 18);
+      roiBalanceDiv.innerHTML = `<b>💰 ROI Earned:</b> ${readable} tokens`;
+      log("ROI Balance: " + readable);
+    } catch (error) {
+      log("❌ ROI check error: " + (error.message || error));
     }
   };
 </script>
 
 </body>
 </html>
-
-
