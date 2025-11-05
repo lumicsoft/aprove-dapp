@@ -1,115 +1,251 @@
+<?php
+// PHP सेटिंग्स: सभी त्रुटियों को दिखाएं
+error_reporting(E_ALL); 
+ini_set('display_errors', 1);
+
+// --- 1. CONFIGURATION (ऑटो-फिल्ड) ---
+// ******************************************************************
+// स्मार्ट कॉन्ट्रैक्ट और नेटवर्क सेटिंग्स
+$contractAddress = '0x251623DfE9985426bA6e3EaD2245e87c0e8610C1';
+$providerUrl = 'https://data-seed-pre-1-s1.binance.org:8545/'; 
+$initialUserAddress = '0x8c9c830E098878e7Cd6a9435d823CEFc62c6b4F0'; 
+// ******************************************************************
+
+// getSpilloverMatrixStatus(address) का फ़ंक्शन हैश
+define('FUNCTION_HASH', '7892d242'); 
+define('ZERO_ADDRESS', '0x0000000000000000000000000000000000000000');
+
+
+// --- 2. PHP / WEB3 RPC LOGIC ---
+
+/**
+ * स्मार्ट कॉन्ट्रैक्ट के getSpilloverMatrixStatus को eth_call के माध्यम से कॉल करता है।
+ * @param string $userAddress वह पता जिसका Matrix स्टेटस देखना है।
+ * @return array [slot1Address, slot2Address]
+ */
+function call_contract_status($userAddress, $contract, $provider) {
+    
+    // अगर पता खाली या ज़ीरो है, तो खाली स्लॉट वापस करें
+    if (empty($userAddress) || strtolower($userAddress) == strtolower(ZERO_ADDRESS)) {
+        return [ZERO_ADDRESS, ZERO_ADDRESS];
+    }
+    
+    // 1. इनपुट डेटा तैयार करें: function_hash + user_address (64 chars padded)
+    $cleanUserAddress = str_replace('0x', '', $userAddress);
+    $paddedAddress = str_pad($cleanUserAddress, 64, '0', STR_PAD_LEFT);
+    $data = '0x' . FUNCTION_HASH . $paddedAddress;
+
+    // 2. RPC रिक्वेस्ट बॉडी तैयार करें
+    $payload = json_encode([
+        'jsonrpc' => '2.0',
+        'method' => 'eth_call',
+        'params' => [
+            [
+                'to' => $contract,
+                'data' => $data
+            ],
+            'latest'
+        ],
+        'id' => 1
+    ]);
+
+    // 3. cURL के माध्यम से RPC कॉल करें
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $provider);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    
+    $response = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($err) {
+        // RPC कॉल में त्रुटि होने पर, खाली स्लॉट वापस करें
+        error_log("RPC Error: " . $err);
+        return [ZERO_ADDRESS, ZERO_ADDRESS];
+    }
+
+    $result = json_decode($response, true);
+
+    if (isset($result['result']) && strlen($result['result']) >= 130) {
+        $output = $result['result'];
+        
+        // Output format: 0x[64 bytes (Slot 1)] [64 bytes (Slot 2)]
+        
+        // Slot 1 (Address) - 40 characters (20 bytes) offset 26 to 66
+        $slot1Hex = substr($output, 26, 40); 
+        
+        // Slot 2 (Address) - 40 characters (20 bytes) offset 90 to 130
+        $slot2Hex = substr($output, 90, 40); 
+        
+        $slot1Address = '0x' . $slot1Hex;
+        $slot2Address = '0x' . $slot2Hex;
+        
+        return [$slot1Address, $slot2Address];
+
+    } else {
+        // कॉन्ट्रैक्ट कॉल या JSON डीकोड में त्रुटि/अमान्य परिणाम
+        error_log("Invalid RPC response for user: " . $userAddress);
+        return [ZERO_ADDRESS, ZERO_ADDRESS];
+    }
+}
+
+
+// --- 3. PHP LOGIC: 2 LEVEL FETCH ---
+
+function get_spillover_tree_data($topUserAddress, $contract, $provider) {
+    // 1. L1 बच्चे (2 सदस्य)
+    list($L1_A, $L1_B) = call_contract_status($topUserAddress, $contract, $provider);
+    
+    $tree = [
+        'self' => $topUserAddress,
+        'L1_A' => ['address' => $L1_A, 'L2' => []],
+        'L1_B' => ['address' => $L1_B, 'L2' => []]
+    ];
+    
+    // 2. L2 बच्चे (4 सदस्य)
+    if (strtolower($L1_A) != strtolower(ZERO_ADDRESS)) {
+        list($L2_A1, $L2_A2) = call_contract_status($L1_A, $contract, $provider);
+        $tree['L1_A']['L2'] = [$L2_A1, $L2_A2];
+    } else {
+        $tree['L1_A']['L2'] = [ZERO_ADDRESS, ZERO_ADDRESS];
+    }
+    
+    if (strtolower($L1_B) != strtolower(ZERO_ADDRESS)) {
+        list($L2_B1, $L2_B2) = call_contract_status($L1_B, $contract, $provider);
+        $tree['L1_B']['L2'] = [$L2_B1, $L2_B2];
+    } else {
+        $tree['L1_B']['L2'] = [ZERO_ADDRESS, ZERO_ADDRESS];
+    }
+    
+    return $tree; 
+}
+
+// URL से 'user' पता प्राप्त करें। अगर नहीं है, तो डिफ़ॉल्ट दिखाएँ।
+$topUser = $_GET['user'] ?? $initialUserAddress;
+
+// Tree डेटा फ़ेच करें
+$treeData = get_spillover_tree_data($topUser, $contractAddress, $providerUrl);
+
+
+// --- 4. RENDERING FUNCTION ---
+
+function render_node($address) {
+    // खाली/ज़ीरो पते की जाँच करें
+    if (strtolower($address) == strtolower(ZERO_ADDRESS) || empty($address)) {
+        $displayAddress = "खाली स्लॉट";
+        $className = "empty-slot";
+        return "<span class='$className'>$displayAddress</span>";
+    } else {
+        // प्रदर्शन के लिए पते को छोटा करें
+        $displayAddress = substr($address, 0, 6) . '...' . substr($address, -4);
+        $className = "user-node";
+        // क्लिकेबल लिंक: पेज को पुनः लोड करें, क्लिक किए गए यूज़र को टॉप पर सेट करें
+        $link = "?user=" . $address; 
+        
+        $html = "<a href='$link' class='$className'>";
+        $html .= $displayAddress;
+        $html .= "</a>";
+        return $html;
+    }
+}
+
+?>
 <!DOCTYPE html>
-<html>
+<html lang="hi">
 <head>
-  <title>Register & Approve (WalletManager)</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; }
-    button { padding: 10px 20px; font-size: 16px; margin: 10px 0; cursor: pointer; }
-    pre { background: #f0f0f0; padding: 15px; height: 200px; overflow-y: auto; border-radius: 5px; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Live Spillover Matrix Tree</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background-color: #f4f4f9; }
+        h2 { color: #333; }
+        .info { font-size: 0.9em; color: #555; margin-bottom: 20px; }
+        .tree-container { display: inline-block; margin: 20px auto; padding: 30px; border: 1px solid #ccc; border-radius: 8px; background-color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .level { display: flex; justify-content: center; margin-bottom: 30px; position: relative; }
+        .node-container { margin: 0 15px; text-align: center; position: relative; }
+        
+        /* Node Styles */
+        .top-node, .user-node, .empty-slot { 
+            padding: 8px 15px; border-radius: 20px; font-weight: bold; color: white; display: inline-block; 
+            min-width: 120px; text-align: center; white-space: nowrap; 
+        }
+        .top-node { background-color: #007bff; }
+        .user-node { background-color: #28a745; text-decoration: none; transition: background-color 0.3s; cursor: pointer; }
+        .user-node:hover { background-color: #1e7e34; }
+        .empty-slot { background-color: #dc3545; opacity: 0.7; }
+
+        /* Tree Lines (Simplified for display) */
+        .line { border-left: 2px dashed #ccc; height: 20px; margin: 0 auto; width: 0; }
+        .level-1 { margin-top: -10px; }
+        .branch-container { width: 50%; }
+        .level-2-wrapper { display: flex; justify-content: center; width: 100%; }
+        .level-2 .branch-h-line { border-top: 2px dashed #ccc; width: calc(100% - 30px); position: absolute; top: 0; left: 15px; z-index: 1; }
+        .level-2 .node-container { z-index: 2; }
+    </style>
 </head>
 <body>
 
-  <h2>Wallet Connect + Register (WalletManager) + Approve</h2>
+    <h2>Live Spillover Matrix Tree View (BSC Testnet)</h2>
+    <p class="info">
+        स्मार्ट कॉन्ट्रैक्ट: <strong><?php echo $contractAddress; ?></strong><br>
+        वर्तमान टॉप यूज़र: <strong><?php echo $treeData['self']; ?></strong><br>
+        (हरे पते पर क्लिक करने से वह यूज़र टॉप पर आ जाएगा और उसका 2-लेवल ट्री खुलेगा।)
+    </p>
 
-  <button id="connectBtn">Connect Wallet</button><br>
-  <button id="registerApproveBtn" disabled>Register & Approve</button>
+    <div class="tree-container">
+        
+        <div class="level level-0">
+            <div class="node-container">
+                <span class="top-node">TOP: <?php echo substr($treeData['self'], 0, 6) . '...'; ?></span>
+                <div class="line"></div>
+            </div>
+        </div>
 
-  <pre id="log"></pre>
+        <div class="level level-1">
+            
+            <div class="node-container">
+                <div class="line"></div>
+                <?php echo render_node($treeData['L1_A']['address']); ?>
+            </div>
+            
+            <div class="node-container">
+                <div class="line"></div>
+                <?php echo render_node($treeData['L1_B']['address']); ?>
+            </div>
 
-<script>
-  const WALLET_MANAGER = "0xe06704C5f5Dbb1A6BceccA3446DBb8d475AfaE9a";  // WalletManager address
-  const TOKEN = "0x55d398326f99059fF775485246999027B3197955";           // Token address
+        </div>
 
-  const ERC20_ABI = [
-    "function allowance(address owner, address spender) view returns (uint256)",
-    "function approve(address spender, uint256 amount) returns (bool)"
-  ];
-
-  const WALLET_MANAGER_ABI = [
-    "function register() external"
-  ];
-
-  let provider, signer, userAddress;
-  let tokenContract, walletManagerContract;
-
-  const logEl = document.getElementById("log");
-  const connectBtn = document.getElementById("connectBtn");
-  const registerApproveBtn = document.getElementById("registerApproveBtn");
-
-  function log(msg) {
-    logEl.textContent += msg + "\n";
-    logEl.scrollTop = logEl.scrollHeight;
-    console.log(msg);
-  }
-  function clearLog() {
-    logEl.textContent = "";
-  }
-
-  connectBtn.onclick = async () => {
-    if (!window.ethereum) {
-      alert("MetaMask nahi mila! Please install MetaMask.");
-      return;
-    }
-
-    try {
-      await window.ethereum.request({ method: "eth_requestAccounts" });
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-
-      tokenContract = new ethers.Contract(TOKEN, ERC20_ABI, signer);
-      walletManagerContract = new ethers.Contract(WALLET_MANAGER, WALLET_MANAGER_ABI, signer);
-
-      log(`✅ Wallet connected: ${userAddress}`);
-      registerApproveBtn.disabled = false;
-    } catch (err) {
-      alert("Wallet connect karte waqt error aaya: " + err.message);
-    }
-  };
-
-  registerApproveBtn.onclick = async () => {
-    if (!signer) {
-      alert("Pehle wallet connect karo!");
-      return;
-    }
-
-    clearLog();
-
-    try {
-      // 1. WalletManager me register karna
-      log("WalletManager me register kar rahe hain...");
-      let txRegister = await walletManagerContract.register();
-      log(`Register transaction bheja: ${txRegister.hash}`);
-      await txRegister.wait();
-      log("✅ Register transaction confirm ho gaya!");
-
-      // 2. WalletManager ke liye token approval
-      log("WalletManager ke liye allowance check kar rahe hain...");
-      let allowance = await tokenContract.allowance(userAddress, WALLET_MANAGER);
-      log(`Current allowance: ${allowance.toString()}`);
-
-      const maxUint = ethers.constants.MaxUint256;
-
-      if (allowance.lt(ethers.BigNumber.from("1"))) {
-        log("Allowance kam hai, approve transaction bhej rahe hain...");
-        let txApprove = await tokenContract.approve(WALLET_MANAGER, maxUint);
-        log(`Approve transaction bheja: ${txApprove.hash}`);
-        await txApprove.wait();
-        log("✅ Approve transaction confirm ho gaya!");
-      } else {
-        log("Allowance pehle se hi sufficient hai.");
-      }
-
-      alert("Registration aur Approval dono successful ho gaye!");
-    } catch (error) {
-      log("❌ Error aaya: " + (error.message || error));
-      alert("Kuch gadbad hui, console mein dekhein.");
-    }
-  };
-</script>
+        <div class="level level-2">
+            <div class="level-2-wrapper">
+                <div class="branch-container">
+                    <div class="branch-h-line"></div>
+                    <div class="node-container">
+                        <div class="line"></div>
+                        <?php echo render_node($treeData['L1_A']['L2'][0]); ?>
+                    </div>
+                    <div class="node-container">
+                        <div class="line"></div>
+                        <?php echo render_node($treeData['L1_A']['L2'][1]); ?>
+                    </div>
+                </div>
+                
+                <div class="branch-container">
+                    <div class="branch-h-line"></div>
+                    <div class="node-container">
+                        <div class="line"></div>
+                        <?php echo render_node($treeData['L1_B']['L2'][0]); ?>
+                    </div>
+                    <div class="node-container">
+                        <div class="line"></div>
+                        <?php echo render_node($treeData['L1_B']['L2'][1]); ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
 
 </body>
 </html>
-
