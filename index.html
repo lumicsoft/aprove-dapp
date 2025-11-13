@@ -13,10 +13,11 @@
     <style>
         /* Custom CSS for vibrant look and feel */
         
-        /* 🟢 2. CSS वैरिएबल (Custom Properties) सेट किए गए 🟢 */
+        /* 🟢 2. CSS वैरिएबल (Custom Properties) सेट किए गए */
         :root {
             --tg-bg-color: #f0f2f5; /* Default fallback */
             --tg-text-color: #1f2937; /* Default fallback */
+            --tg-hint-color: #9ca3af;
         }
         
         body {
@@ -25,6 +26,10 @@
             background-color: var(--tg-bg-color); 
             color: var(--tg-text-color); /* Darker text for contrast */
         }
+        
+        /* Tailwind classes जो TG theme पर निर्भर करते हैं उन्हें बदलने के लिए: */
+        .text-gray-600 { color: var(--tg-hint-color); }
+        
         .green-gradient-button {
             /* Stronger, more appealing gradient */
             background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
@@ -121,6 +126,11 @@
             background-color: #1f2937;
             color: white;
         }
+        /* Telegram Web App Styles */
+        .bg-white { background-color: var(--tg-bg-color); }
+        .bg-gray-800 { background-color: #1f2937; } /* Keep dark card dark */
+        .shadow-md, .shadow-2xl { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+        
     </style>
 </head>
 <body class="min-h-screen">
@@ -381,7 +391,7 @@
                 <span class="text-4xl font-extrabold text-pink-600">$1,335.00</span>
                 <p class="text-xs text-gray-500 mt-2">Earn up to 10 Levels deep. (10 लेवल तक कमाएँ)</p>
             </div>
-
+            
             <div class="mb-8">
                 <label for="referralLink" class="block text-sm font-semibold text-gray-700 mb-2">Your Invitation Link (आपका निमंत्रण लिंक)</label>
                 <div class="flex">
@@ -516,8 +526,8 @@
 
             <div class="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-xl shadow-inner">
                 <div class="flex justify-between items-center mb-2">
-                    <p class="text-sm font-semibold text-orange-700">Your User ID:</p>
-                    <span class="font-bold text-orange-900 bg-orange-100 px-3 py-1 rounded-full text-sm">USER123456</span>
+                    <p class="text-sm font-semibold text-orange-700" id="tgUserLabel">Your User ID:</p>
+                    <span class="font-bold text-orange-900 bg-orange-100 px-3 py-1 rounded-full text-sm" id="tgUserDisplay">Loading ID...</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <p class="text-lg font-semibold text-orange-700">Available Balance:</p>
@@ -538,36 +548,36 @@
                         <i data-lucide="save" class="w-4 h-4 mr-2"></i> Save
                     </button>
                 </div>
-                <p class="text-xs text-red-500 mt-1">Ensure this is a correct BEP20 network address.</p>
+                <p class="text-xs text-red-500 mt-1">Ensure this is a correct BEP20 (Binance Smart Chain) USDT address.</p>
             </div>
 
             <div class="mb-8">
-                <label for="withdrawalAmount" class="block text-sm font-semibold text-gray-700 mb-2">Amount to Withdraw (USDT)</label>
+                <label for="withdrawalAmount" class="block text-sm font-semibold text-gray-700 mb-2">Withdrawal Amount (USDT)</label>
                 <div class="relative rounded-xl shadow-inner border border-gray-200">
-                    <input type="number" id="withdrawalAmount" placeholder="Min. 20 USDT" 
-                           min="20" step="0.01" value=""
+                    <input type="number" id="withdrawalAmount" placeholder="Min. 10 USDT" 
+                           min="10" step="0.01" max="450.75"
                            class="input-usdt w-full p-4 pr-16 text-2xl font-bold text-gray-900 border-none bg-transparent focus:ring-orange-500 focus:border-orange-500 rounded-xl"
                            required>
                     <span class="absolute right-0 top-0 bottom-0 flex items-center pr-4 text-xl font-extrabold text-orange-600">USDT</span>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Transaction Fee: 5 USDT</p>
+                <p class="text-xs text-gray-500 mt-1">Fee: 1 USDT + 1% of the amount. (Minimum Withdrawal: 10 USDT)</p>
             </div>
 
-            <button onclick="simulateWithdrawal()" class="w-full orange-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg">
-                <i data-lucide="send" class="w-5 h-5 mr-2 inline-block"></i> Submit Withdrawal
+            <button onclick="simulateWithdrawal()" id="withdrawalButton" 
+                    class="w-full orange-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg">
+                <i data-lucide="send" class="w-5 h-5 mr-2 inline-block"></i> Confirm Withdrawal
             </button>
 
-            <h3 class="text-xl font-bold text-gray-800 pt-8 flex items-center mb-4 border-t mt-8">
-                <i data-lucide="clock-history" class="w-5 h-5 mr-2 text-gray-500"></i> Withdrawal History (निकासी इतिहास)
+            <h3 class="text-xl font-bold text-gray-800 flex items-center mb-4 mt-8 border-t pt-4">
+                <i data-lucide="list-ordered" class="w-5 h-5 mr-2 text-gray-500"></i> Withdrawal History
             </h3>
-
             <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
                 <table class="min-w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time (दिनांक/समय)</th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Amount (रकम)</th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Status/Hash</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Amount (रकम)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date (दिनांक)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Status/TXN</th>
                         </tr>
                     </thead>
                     <tbody id="withdrawalHistoryBody">
@@ -575,11 +585,12 @@
                 </table>
             </div>
             <div id="withdrawalHistoryPagination" class="flex justify-center items-center mt-6"></div>
+
         </section>
 
         <section id="dailyEarningHistoryView" data-view="daily-earning-history" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
             <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="dollar-sign" class="w-6 h-6 mr-2 text-green-500"></i> Daily Earning History (दैनिक कमाई)
+                <i data-lucide="history" class="w-6 h-6 mr-2 text-green-500"></i> Daily Earning History (दैनिक कमाई इतिहास)
             </h2>
             <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
                 <table class="min-w-full text-left border-collapse">
@@ -596,6 +607,7 @@
             </div>
             <div id="dailyEarningHistoryPagination" class="flex justify-center items-center mt-6"></div>
         </section>
+
     </div>
 
     <footer id="footer" class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-30 shadow-2xl">
@@ -612,51 +624,78 @@
                 <i data-lucide="info" class="w-6 h-6 mb-1"></i>
                 <span class="text-xs">Introduction</span>
             </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
-                <i data-lucide="bell" class="w-6 h-6 mb-1"></i>
-                <span class="text-xs">Alerts</span>
+            <button onclick="navigateTo('withdrawalView')" class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
+                <i data-lucide="arrow-down-left" class="w-6 h-6 mb-1"></i>
+                <span class="text-xs">Withdrawal</span>
             </button>
         </div>
     </footer>
 
     <script>
-        // --- Global State and Constants ---
+        // --- Global State ---
         let currentPage = 'dashboardView'; // Default view
-        const views = {}; // To store view elements
+        const views = {};
         const viewTitles = {
-            dashboardView: 'AiEarn Dashboard',
-            weekendEarnView: 'Weekend Earn',
-            weekendEarnHistoryView: 'Weekend History',
-            buyTPView: 'Buy Trade Power',
-            buyTPHistoryView: 'TP History',
-            referEarnView: 'Refer & Earn',
-            levelUsersView: 'Level Users',
-            aiTradingStatusView: 'AI Trading Status',
-            myTradePowerView: 'My Trade Power',
-            introductionView: 'Company Profile',
-            withdrawalView: 'Withdrawal',
-            dailyEarningHistoryView: 'Daily Earnings'
+            'dashboardView': 'AiEarn Dashboard',
+            'buyTPView': 'TP Investment Portal',
+            'buyTPHistoryView': 'TP Purchase History',
+            'referEarnView': 'Refer & Earn Program',
+            'levelUsersView': 'Referral Users Detail',
+            'aiTradingStatusView': 'AI Trading Status',
+            'myTradePowerView': 'My Trade Power',
+            'withdrawalView': 'Request Withdrawal',
+            'introductionView': 'Company Profile',
+            'dailyEarningHistoryView': 'Daily Earning History',
+            'weekendEarnView': 'WEEKEND EARN FAST',
+            'weekendEarnHistoryView': 'Weekend Earn History'
         };
+        const itemsPerPage = 10;
+        let withdrawalHistoryCurrentPage = 1;
+        let buyTPHistoryCurrentPage = 1;
+        let dailyEarningHistoryCurrentPage = 1;
+        let weekendEarnHistoryCurrentPage = 1; 
 
-        // --- Mock Data (Kept for demonstration) ---
-        let MOCK_AVAILABLE_BALANCE = 450.75; // Initial balance
-        let hasInvestedThisWeek = false; // Mock state for weekend earn
-        const mockWithdrawalHistory = [
-            { id: 3, amount: 200.00, date: '2025-11-10 15:45', txnHash: '0xABCDEF1234567890abcdef...', status: 'Completed' },
-            { id: 2, amount: 50.00, date: '2025-11-05 10:20', txnHash: '0x1234567890abcdef123456...', status: 'Completed' },
-            { id: 1, amount: 100.00, date: '2025-11-01 08:00', txnHash: '0x9876543210fedcba987654...', status: 'Completed' }
-        ];
+        // 🟢 5. Telegram Global Variables
+        let TG_USER_ID = '000000000'; // Fallback
+        let TG_USERNAME = 'User';      // Fallback
+        let TG_INIT_DATA = null;
         
-        // Helper function to generate mock data
-        function generateMockData(count, generatorFn) {
+
+        // --- Mock Data / State Variables (Referral Data Updated) ---
+
+        // Mock state to track weekly investment limit
+        let hasInvestedThisWeek = false; 
+        
+        // Mock Available Balance
+        let MOCK_AVAILABLE_BALANCE = 450.75;
+
+        // Mock User TP Packages
+        const mockUserTPPackages = [
+            { id: 1, amount: 100, daysTotal: 20, activeDays: 15, dailyEarning: 0.060 },
+            { id: 2, amount: 300, daysTotal: 20, activeDays: 20, dailyEarning: 0.065 }, // Expired
+            { id: 3, amount: 1000, daysTotal: 20, activeDays: 5, dailyEarning: 0.070 }
+        ];
+
+        // Utility to generate mock data
+        function generateMockData(count, factory) {
             const data = [];
             for (let i = 1; i <= count; i++) {
-                data.push(generatorFn(i));
+                data.push(factory(i));
             }
             return data;
         }
 
-        const roiTiers = [ 
+        // 25 Mock Withdrawal History Entries
+        const mockWithdrawalHistory = generateMockData(25, (i) => ({
+            id: i,
+            amount: [25, 50, 100, 200][i % 4] + (Math.floor(Math.random() * 5) + 1),
+            date: `2025-11-${String(30 - i).padStart(2, '0')}`,
+            txnHash: i % 3 === 0 ? 'Processing...' : `0xABCDEF${String(1000 + i)}...`,
+            status: i % 3 === 0 ? 'Processing' : 'Completed'
+        })).sort((a, b) => b.id - a.id);
+
+        // ROI Tiers definition (from highest to lowest threshold)
+        const roiTiers = [
             { threshold: 3000, rate: 0.070, label: '7.0%' },
             { threshold: 300, rate: 0.065, label: '6.5%' },
             { threshold: 20, rate: 0.060, label: '6.0%' },
@@ -665,534 +704,90 @@
 
         function getRoiDetails(amount) {
             const tier = roiTiers.find(t => amount >= t.threshold) || roiTiers[roiTiers.length - 1];
-            return { rate: tier.rate, label: tier.label, dailyEarning: (amount * tier.rate).toFixed(4) };
+            return {
+                rate: tier.rate,
+                label: tier.label,
+                dailyEarning: (amount * tier.rate).toFixed(4)
+            };
         }
+
+        // 🟢 6. Mock Referral Data को Telegram User के नाम के साथ अपडेट किया गया
+        function getReferralName(index) {
+            // असली Telegram User के नाम का उपयोग करें
+            if (index === 1) return `${TG_USERNAME} (You)`; 
+            // बाकी के लिए Mock Data
+            const names = ['Aman S.', 'Priya K.', 'Vikram R.', 'Neha J.', 'Karan M.', 'Sonal B.', 'Rajesh P.'];
+            return names[(index + TG_USER_ID.slice(-1)) % names.length];
+        }
+
+        const mockReferralData = [
+            { level: 1, users: 12, deposited: 5200, earnings: 52.00, usersDetail: [
+                { name: getReferralName(1) + ' (ID: 001)', deposit: 500, datetime: '2025-10-01 10:30' },
+                { name: getReferralName(2) + ' (ID: 002)', deposit: 100, datetime: '2025-10-01 12:45' },
+                { name: getReferralName(3) + ' (ID: 003)', deposit: 300, datetime: '2025-10-02 09:15' },
+                { name: getReferralName(4) + ' (ID: 004)', deposit: 4300, datetime: '2025-10-03 14:00' }
+            ] },
+            { level: 2, users: 45, deposited: 15500, earnings: 155.00, usersDetail: [
+                { name: getReferralName(5) + ' (ID: 010)', deposit: 1000, datetime: '2025-10-05 18:30' },
+                { name: getReferralName(6) + ' (ID: 011)', deposit: 50, datetime: '2025-10-06 09:00' },
+                { name: getReferralName(7) + ' (ID: 012)', deposit: 1500, datetime: '2025-10-07 11:10' }
+            ] },
+            { level: 3, users: 120, deposited: 32000, earnings: 320.00, usersDetail: [] },
+            { level: 4, users: 200, deposited: 45000, earnings: 450.00, usersDetail: [] },
+            { level: 5, users: 300, deposited: 50000, earnings: 350.00, usersDetail: [] },
+            { level: 6, users: 400, deposited: 60000, earnings: 0.00, usersDetail: [] }
+        ];
 
         // Mock AI Trading History (10 entries for cleaner view)
         const mockAITradingHistory = [
             { pair: 'EUR/USD', position: 'Long', leverage: '50X', entry: 1.0725, execute: 1.0730, profit: 0.45, time: '2025-11-12 10:05:30Z' },
             { pair: 'USD/JPY', position: 'Short', leverage: '100X', entry: 151.12, execute: 150.98, profit: 1.20, time: '2025-11-12 09:55:00Z' },
-            { pair: 'GBP/USD', position: 'Long', leverage: '75X', entry: 1.2450, execute: 1.2458, profit: 0.65, time: '2025-11-12 09:30:15Z' },
-            { pair: 'AUD/USD', position: 'Short', leverage: '20X', entry: 0.6455, execute: 0.6450, profit: 0.50, time: '2025-11-12 09:05:00Z' },
-            { pair: 'EUR/JPY', position: 'Short', leverage: '100X', entry: 159.00, execute: 158.85, profit: 1.50, time: '2025-11-12 08:40:45Z' },
-            { pair: 'USD/CAD', position: 'Long', leverage: '50X', entry: 1.3750, execute: 1.3753, profit: 0.30, time: '2025-11-12 08:15:30Z' },
-            { pair: 'NZD/USD', position: 'Long', leverage: '10X', entry: 0.5950, execute: 0.5952, profit: 0.20, time: '2025-11-12 07:50:00Z' },
-            { pair: 'XAU/USD', position: 'Short', leverage: '200X', entry: 2350.00, execute: 2345.50, profit: 2.50, time: '2025-11-12 07:25:10Z' },
-            { pair: 'USD/CHF', position: 'Short', leverage: '75X', entry: 0.8980, execute: 0.8975, profit: 0.55, time: '2025-11-12 07:00:00Z' },
-            { pair: 'EUR/GBP', position: 'Long', leverage: '50X', entry: 0.8600, execute: 0.8605, profit: 0.58, time: '2025-11-12 06:35:30Z' }
-        ];
-
-        // Mock User TP Packages
-        const mockUserTPPackages = [
-            { id: 101, amount: 50.00, dailyEarning: 0.055, activeDays: 15, daysTotal: 20, startDate: '2025-10-28', endDate: '2025-11-17' },
-            { id: 102, amount: 300.00, dailyEarning: 0.065, activeDays: 2, daysTotal: 20, startDate: '2025-11-10', endDate: '2025-11-30' },
-            { id: 103, amount: 20.00, dailyEarning: 0.060, activeDays: 20, daysTotal: 20, startDate: '2025-10-23', endDate: '2025-11-12' }, // Expired
-            { id: 104, amount: 500.00, dailyEarning: 0.065, activeDays: 1, daysTotal: 20, startDate: '2025-11-11', endDate: '2025-12-01' }
-        ];
-        
-        // 25 Mock Weekend Earn History Entries
-        const mockWeekendEarnHistory = generateMockData(25, (i) => {
-            const amount = [100, 150, 200, 300, 500][i % 5] + (Math.floor(Math.random() * 20) + 1);
-            const totalReturn = amount * 0.30;
-            const returnAmount = totalReturn;
-            const status = i < 3 ? 'Completed' : 'Processing';
-            return { id: i, amount: amount, date: `2025-11-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`, returnAmount: returnAmount, status: status };
-        }).sort((a, b) => b.id - a.id);
+            { pair: 'GBP/USD', position: 'Long', leverage: '75X', entry: 1.2450, execute: 1.2458, profit: 0.65, time: '2025-11-12 09:40:00Z' },
+            { pair: 'AUD/USD', position: 'Short', leverage: '20X', entry: 0.6522, execute: 0.6521, profit: 0.15, time: '2025-11-12 09:25:30Z' },
+            { pair: 'EUR/GBP', position: 'Long', leverage: '50X', entry: 0.8550, execute: 0.8548, profit: -0.20, time: '2025-11-12 09:10:15Z' }, // Loss
+            { pair: 'NZD/USD', position: 'Long', leverage: '100X', entry: 0.6055, execute: 0.6062, profit: 0.75, time: '2025-11-12 08:55:00Z' },
+            { pair: 'XAU/USD', position: 'Short', leverage: '50X', entry: 1980.50, execute: 1978.90, profit: 1.50, time: '2025-11-12 08:40:40Z' },
+            { pair: 'USD/CAD', position: 'Long', leverage: '75X', entry: 1.3650, execute: 1.3653, profit: 0.30, time: '2025-11-12 08:25:10Z' },
+            { pair: 'EUR/JPY', position: 'Short', leverage: '50X', entry: 161.20, execute: 161.25, profit: -0.50, time: '2025-11-12 08:10:00Z' }, // Loss
+            { pair: 'GBP/JPY', position: 'Long', leverage: '100X', entry: 188.45, execute: 188.60, profit: 0.95, time: '2025-11-12 07:55:30Z' }
+        ].slice(0, 10); 
 
         // 25 Mock Buy TP History Entries
         const mockBuyTPHistory = generateMockData(25, (i) => {
             const amount = [50, 100, 300, 500, 1000, 3500, 50][i % 7] + (Math.floor(Math.random() * 10) + 1);
             const roi = getRoiDetails(amount);
-            return { id: i, amount: amount, date: `2025-10-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`, ...roi };
+            return {
+                id: i,
+                amount: amount,
+                date: `2025-10-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`,
+                ...roi
+            };
         }).sort((a, b) => b.id - a.id);
 
         // 25 Mock Daily Earning Entries
         const mockDailyEarningHistory = generateMockData(25, (i) => ({
-            id: i, date: `2025-11-${String(30 - i).padStart(2, '0')}`, amount: (0.02 + Math.random() * 0.05).toFixed(4), rate: (5.5 + Math.random() * 0.5).toFixed(2) + '%'
+            id: i,
+            date: `2025-11-${String(30 - i).padStart(2, '0')}`,
+            amount: (0.02 + Math.random() * 0.05).toFixed(4),
+            rate: (5.5 + Math.random() * 0.5).toFixed(2) + '%'
         })).sort((a, b) => b.id - a.id);
 
-        const mockReferralData = [
-            { level: 1, users: 12, deposited: 5200, earnings: 52.00, usersDetail: [{ name: 'Aman S. (ID: 001)', deposit: 500, datetime: '2025-10-01 10:30' }, { name: 'Priya K. (ID: 002)', deposit: 1000, datetime: '2025-10-02 12:45' }, { name: 'Ravi M. (ID: 003)', deposit: 3700, datetime: '2025-10-05 18:00' }] },
-            { level: 2, users: 45, deposited: 12500, earnings: 75.00, usersDetail: [{ name: 'Deepak T.', deposit: 200, datetime: '2025-10-03 09:00' }, { name: 'Kiran B.', deposit: 50, datetime: '2025-10-04 11:15' }] },
-            { level: 3, users: 150, deposited: 35000, earnings: 105.00, usersDetail: [] },
-            { level: 4, users: 300, deposited: 60000, earnings: 180.00, usersDetail: [] },
-            { level: 5, users: 600, deposited: 100000, earnings: 300.00, usersDetail: [] },
-            { level: 6, users: 800, deposited: 120000, earnings: 360.00, usersDetail: [] },
-            { level: 7, users: 1000, deposited: 150000, earnings: 450.00, usersDetail: [] },
-        ];
+        // Mock Weekend Earn History
+        const mockWeekendEarnHistory = generateMockData(15, (i) => {
+            const amount = [100, 150, 200, 500][i % 4] + (Math.floor(Math.random() * 5));
+            const returnAmount = amount * 0.30;
+            const status = i < 3 ? 'Completed' : 'Processing';
+            return {
+                id: i,
+                amount: amount,
+                date: `2025-11-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`,
+                returnAmount: returnAmount,
+                status: status
+            };
+        }).sort((a, b) => b.id - a.id);
 
 
-        // --- Telegram WebApp Initialization and Theme Matching 🟢 New Function 🟢 ---
-        function initializeTelegramWebApp() {
-            if (window.Telegram && window.Telegram.WebApp) {
-                const WebApp = window.Telegram.WebApp;
-
-                // 1. App को तैयार घोषित करें
-                WebApp.ready();
-
-                // 2. थीम और कलर मैचिंग
-                const themeParams = WebApp.themeParams;
-
-                // CSS Variables को Telegram के कलर से अपडेट करें
-                document.documentElement.style.setProperty(
-                    '--tg-bg-color', 
-                    themeParams.bg_color || '#f0f2f5' // Telegram BG Color
-                );
-                document.documentElement.style.setProperty(
-                    '--tg-text-color', 
-                    themeParams.text_color || '#1f2937' // Telegram Text Color
-                );
-
-                // Optional: Mini App को बंद करने के लिए एक बटन सेट करें (Testing)
-                // if (WebApp.isClosingConfirmationEnabled) {
-                //     WebApp.setHeaderColor('secondary_bg_color'); // Set header color if needed
-                //     WebApp.MainButton.setText("Close App").show().onClick(() => WebApp.close());
-                // }
-                
-                // Optional: एक स्वागत मैसेज दिखाएँ (सिर्फ़ टेस्टिंग के लिए)
-                // showMessage('Welcome', 'Mini App Initialized! Telegram User ID: ' + WebApp.initDataUnsafe?.user?.id);
-            }
-        }
-
-        // --- View Management ---
-        function navigateTo(viewId, page = 1) {
-            // Find all views and hide them
-            document.querySelectorAll('.view').forEach(view => {
-                view.classList.add('hidden-view');
-            });
-
-            // Show the target view
-            const newView = document.getElementById(viewId);
-            if (newView) {
-                newView.classList.remove('hidden-view');
-                newView.classList.add('view');
-            } else {
-                // Should not happen if all views are added correctly
-                console.error(`View ID not found: ${viewId}`);
-                return;
-            }
-            currentPage = viewId;
-            renderHeader(viewId);
-
-            // --- Special initialization for specific views ---
-            if (viewId === 'dashboardView' || viewId === 'weekendEarnView') {
-                // IMPORTANT: Run the eligibility check whenever navigating to dashboard or the weekend form
-                checkWeekendEligibility();
-            }
-            if (viewId === 'referEarnView') {
-                populateReferralTable();
-            } else if (viewId === 'weekendEarnHistoryView') {
-                renderWeekendEarnHistory(page);
-            } else if (viewId === 'withdrawalView') {
-                // IMPORTANT: Update balance display in case it was changed by reinvestAllBalance
-                const balanceSpan = document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600');
-                if (balanceSpan) {
-                    balanceSpan.textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
-                }
-                // Also ensure the button is enabled for the next action (since MOCK_AVAILABLE_BALANCE is constant)
-                const reinvestBtn = document.getElementById('reinvestButton');
-                if (reinvestBtn) {
-                    reinvestBtn.disabled = false;
-                    reinvestBtn.classList.remove('opacity-50');
-                }
-                renderWithdrawalHistory(page);
-            } else if (viewId === 'buyTPHistoryView') {
-                renderBuyTPHistory(page);
-            } else if (viewId === 'dailyEarningHistoryView') {
-                renderDailyEarningHistory(page);
-            } else if (viewId === 'aiTradingStatusView') {
-                // New
-                renderAITradingStatus();
-            } else if (viewId === 'myTradePowerView') {
-                // New
-                renderMyTradePower();
-            }
-        }
-
-        // --- Other Feature Logic (Kept from previous version) ---
-        
-        // ... (Countdown Timer Logic, ROI Tiers, Buy TP Form Logic, Referral Logic) ...
-
-        const timerElement = document.getElementById('settlement-timer');
-        let totalSeconds = (19 * 3600) + (44 * 60) + 22;
-
-        function formatTime(seconds) {
-            const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
-            const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
-            const s = String(Math.floor(seconds % 60)).padStart(2, '0');
-            return `${h}h ${m}m ${s}s`;
-        }
-
-        function updateTimer() {
-            if (timerElement) {
-                timerElement.textContent = `Settlement time: ${formatTime(totalSeconds)}`;
-                if (totalSeconds > 0) {
-                    totalSeconds--;
-                } else {
-                    totalSeconds = (24 * 3600); // Reset to 24 hours
-                    // This is where a real app would trigger settlement
-                    console.log("Daily Settlement Triggered!");
-                }
-                setTimeout(updateTimer, 1000);
-            }
-        }
-        
-        updateTimer(); // Start the timer
-
-        const usdtInput = document.getElementById('usdtAmount');
-        const buyButton = document.getElementById('buyNowButton');
-        const dailyRateDisplay = document.getElementById('dailyRateDisplay');
-        const dailyReturnAmount = document.getElementById('dailyReturnAmount');
-        
-        function calculateReturn(usdtValue) {
-            const minInvest = 10;
-            const amount = parseFloat(usdtValue);
-
-            if (isNaN(amount) || amount < minInvest) {
-                dailyRateDisplay.textContent = '0%';
-                dailyReturnAmount.textContent = '0.00 USDT';
-                buyButton.disabled = true;
-                buyButton.classList.add('opacity-50', 'cursor-not-allowed');
-                buyButton.classList.remove('hover:opacity-95');
-                buyButton.innerHTML = '<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Min 10 USDT)';
-                lucide.createIcons();
-                return;
-            }
-
-            const tier = roiTiers.find(t => amount >= t.threshold);
-            const rate = tier ? tier.rate : roiTiers[roiTiers.length - 1].rate;
-            const rateLabel = tier ? tier.label : '5.5%';
-            const dailyReturn = amount * rate;
-
-            dailyRateDisplay.textContent = rateLabel;
-            amountDisplay.textContent = `${dailyReturn.toFixed(4)} USDT`;
-            
-            buyButton.disabled = false;
-            buyButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            buyButton.classList.add('hover:opacity-95');
-            buyButton.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Open Gateway)';
-            lucide.createIcons();
-        }
-
-        function simulateGateway() {
-            const amount = usdtInput.value;
-            if (parseFloat(amount) < 10) {
-                showMessage('Investment Error', 'Minimum investment is 10 USDT.');
-                return;
-            }
-            navigateTo('dashboardView');
-            showMessage(
-                'Payment Gateway Opened',
-                `You are being redirected to the USDT BEP network gateway to deposit ${amount} USDT. Integration will be completed later.`
-            );
-        }
-
-        // --- Weekend Earn Logic (UPDATED) ---
-        const weekendAmountInput = document.getElementById('weekendAmount');
-        const weekendBuyButton = document.getElementById('weekendBuyButton');
-        const weekendRateDisplay = document.getElementById('weekendRateDisplay');
-        const weekendReturnAmount = document.getElementById('weekendReturnAmount');
-        const weekendRestrictionText = document.getElementById('weekendRestrictionText');
-        const WEEKEND_RATE = 0.30; // 30% return
-        const WEEKEND_MIN_INVEST = 100; // UPDATED MINIMUM
-
-        function calculateWeekendReturn(usdtValue) {
-            const amount = parseFloat(usdtValue);
-            const minInvest = WEEKEND_MIN_INVEST;
-
-            if (hasInvestedThisWeek) {
-                // If already invested, prevent calculation/button activation
-                weekendRateDisplay.textContent = '30%';
-                weekendReturnAmount.textContent = '0.00 USDT';
-                weekendBuyButton.disabled = true;
-                return;
-            }
-
-            if (isNaN(amount) || amount < minInvest) {
-                weekendRateDisplay.textContent = '30%';
-                weekendReturnAmount.textContent = '0.00 USDT';
-                weekendBuyButton.disabled = true;
-                weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
-                weekendBuyButton.classList.remove('hover:opacity-95');
-                // Updated button text
-                weekendBuyButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (Min ${minInvest} USDT)`;
-                lucide.createIcons();
-                return;
-            }
-
-            const totalReturn = amount * WEEKEND_RATE;
-            weekendReturnAmount.textContent = `${totalReturn.toFixed(4)} USDT`;
-            
-            weekendBuyButton.disabled = false;
-            weekendBuyButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            weekendBuyButton.classList.add('hover:opacity-95');
-            weekendBuyButton.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 mr-2 inline-block"></i> Invest ${amount.toFixed(2)} USDT Now`;
-            lucide.createIcons();
-        }
-
-        function checkWeekendEligibility() {
-            // This mock logic simulates checking if a user has used the weekly feature
-            // In a real app, this would be an API call
-            const weekendDashboardButton = document.getElementById('weekendDashboardButton');
-            if (weekendDashboardButton) {
-                if (hasInvestedThisWeek) {
-                    weekendDashboardButton.textContent = 'Limit Reached';
-                    weekendDashboardButton.classList.remove('hover:bg-yellow-500');
-                    weekendDashboardButton.classList.add('opacity-70', 'cursor-not-allowed');
-                    weekendDashboardButton.setAttribute('onclick', 'showMessage("Limit Reached", "You have already invested in WEEKEND EARN FAST this week.")');
-                } else {
-                    weekendDashboardButton.textContent = "LET'S GO";
-                    weekendDashboardButton.classList.add('hover:bg-yellow-500');
-                    weekendDashboardButton.classList.remove('opacity-70', 'cursor-not-allowed');
-                    weekendDashboardButton.setAttribute('onclick', "navigateTo('weekendEarnView')");
-                }
-            }
-
-            // View Update
-            if (weekendAmountInput && weekendRestrictionText) {
-                const minInvest = WEEKEND_MIN_INVEST;
-                if (hasInvestedThisWeek) {
-                    weekendAmountInput.setAttribute('disabled', 'true');
-                    weekendAmountInput.value = '';
-                    weekendAmountInput.placeholder = 'Already invested this week';
-                    weekendBuyButton.setAttribute('disabled', 'true');
-                    weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
-                    weekendBuyButton.classList.remove('hover:opacity-95');
-                    weekendBuyButton.innerHTML = '<i data-lucide="x-circle" class="w-5 h-5 mr-2 inline-block"></i> Weekly Limit Reached';
-                    weekendRestrictionText.innerHTML = `<span class="font-bold text-red-500">🚫 Weekly Limit Reached:</span> You must wait until next week to invest again. (Minimum ${minInvest} USDT)`;
-                } else {
-                    weekendAmountInput.removeAttribute('disabled');
-                    weekendAmountInput.placeholder = `Min. ${minInvest} USDT`;
-                    weekendRestrictionText.innerHTML = `Invest for a short-term, high-return opportunity. (Minimum ${minInvest} USDT, **Once per week**)`;
-                    // Reset button/calculation state
-                    calculateWeekendReturn(weekendAmountInput.value);
-                }
-                lucide.createIcons();
-            }
-        }
-
-
-        function simulateWeekendGateway() {
-            const amount = weekendAmountInput.value;
-            const minInvest = WEEKEND_MIN_INVEST;
-            if (parseFloat(amount) < minInvest) {
-                showMessage('Investment Error', `Minimum weekend investment is ${minInvest} USDT.`);
-                return;
-            }
-            if (hasInvestedThisWeek) {
-                 showMessage('Error', 'Weekly limit already used.');
-                 return;
-            }
-
-            hasInvestedThisWeek = true; // Set mock state to true
-            checkWeekendEligibility(); // Update the dashboard and form
-            navigateTo('dashboardView');
-
-            const totalReturn = parseFloat(amount) * WEEKEND_RATE;
-            
-            // Simulate adding to history
-            const newId = mockWeekendEarnHistory.length + 1;
-            mockWeekendEarnHistory.unshift({
-                id: newId, 
-                amount: parseFloat(amount), 
-                date: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0].slice(0, 5) + ':00', 
-                returnAmount: totalReturn, 
-                status: 'Processing' 
-            });
-
-
-            showMessage(
-                'Weekend Investment Initiated',
-                `Successfully invested ${parseFloat(amount).toFixed(2)} USDT into WEEKEND EARN FAST! You are expected to receive ${totalReturn.toFixed(2)} USDT profit in 48 hours. (Weekly Limit Used)`
-            );
-        }
-
-        const referralTableBody = document.getElementById('referralTableBody');
-        const levelUsersTitle = document.getElementById('levelUsersTitle');
-        const levelUsersList = document.getElementById('levelUsersList');
-
-        function populateReferralTable() {
-            let html = '';
-            mockReferralData.forEach(data => {
-                const isHighlighted = data.level === 1; // Highlight Level 1 only
-                html += `
-                    <tr class="border-b border-gray-100 ${isHighlighted ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}">
-                        <td class="py-3 px-4 text-xs font-bold text-gray-800">${data.level}</td>
-                        <td class="py-3 px-4 text-xs text-center font-medium text-gray-600">${data.users}</td>
-                        <td class="py-3 px-4 text-xs text-right font-medium text-gray-600">$${data.deposited.toLocaleString()}</td>
-                        <td class="py-3 px-4 text-xs text-right font-bold text-green-600">$${data.earnings.toFixed(2)}</td>
-                        <td class="py-3 px-4 text-xs text-center">
-                            <button onclick="showLevelUsers(${data.level})" class="text-blue-500 hover:text-blue-700 text-xs font-semibold px-2 py-1 rounded-full border border-blue-200 hover:bg-blue-50 transition">
-                                Preview (${data.users})
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-            referralTableBody.innerHTML = html;
-        }
-
-        function copyReferralLink() {
-            const linkInput = document.getElementById('referralLink');
-            linkInput.select();
-            document.execCommand('copy');
-            showMessage('Success!', 'Your Referral link has been copied to the clipboard.');
-        }
-
-        function showLevelUsers(level) {
-            const levelData = mockReferralData.find(d => d.level === level);
-            if (!levelData) return;
-
-            levelUsersTitle.innerHTML = `<i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level ${level} (${levelData.users}) (लेवल ${level} के उपयोगकर्ता)`;
-            
-            let listHtml = '';
-            if (levelData.usersDetail && levelData.usersDetail.length > 0) {
-                listHtml = levelData.usersDetail.map(user => `
-                    <div class="p-4 bg-gray-50 rounded-xl shadow-md border border-gray-100">
-                        <p class="font-bold text-gray-800">${user.name}</p>
-                        <p class="text-sm text-gray-600">Deposit: <span class="font-semibold text-green-600">$${user.deposit.toLocaleString()}</span></p>
-                        <p class="text-xs text-gray-500 mt-1">Date: ${user.datetime}</p>
-                    </div>
-                `).join('');
-            } else {
-                listHtml = '<p class="text-center text-gray-500 py-4">No detailed user data available for this level.</p>';
-            }
-
-            levelUsersList.innerHTML = listHtml;
-            lucide.createIcons();
-            navigateTo('levelUsersView');
-        }
-
-
-        // --- Render Functions (History Views) ---
-        // (Pagination logic is omitted for brevity but should be included in a real implementation)
-        
-        function renderHeader(viewId) {
-            let title = viewTitles[viewId] || 'AiEarn';
-            let backButtonHtml = '';
-            const headerElement = document.getElementById('header');
-            
-            if (viewId !== 'dashboardView') {
-                // Determine the correct view to go back to
-                let backToView = 'dashboardView';
-                if (viewId === 'levelUsersView') {
-                    backToView = 'referEarnView'; // Go back to Refer & Earn from User List
-                } else if (viewId === 'buyTPHistoryView') {
-                    backToView = 'buyTPView'; // Go back to Buy TP form from History
-                } else if (viewId === 'weekendEarnHistoryView') {
-                    backToView = 'weekendEarnView'; // Go back to Weekend Earn form from History
-                } else if (['aiTradingStatusView', 'myTradePowerView', 'introductionView', 'withdrawalView', 'dailyEarningHistoryView'].includes(viewId)) {
-                    backToView = 'dashboardView'; // Go back to dashboard from feature views
-                }
-                
-                // New: AI/My TP views go back to dashboard
-                backButtonHtml = `
-                    <button onclick="navigateTo('${backToView}')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
-                        <i data-lucide="arrow-left" class="w-6 h-6"></i>
-                    </button>
-                `;
-            } else {
-                backButtonHtml = `
-                    <button onclick="console.log('Close')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
-                        <i data-lucide="x" class="w-6 h-6"></i>
-                    </button>
-                `;
-            }
-
-            headerElement.innerHTML = `
-                <div class="max-w-lg mx-auto flex items-center">
-                    ${backButtonHtml}
-                    <h1 class="text-xl font-extrabold text-gray-900 ml-3 truncate">${title}</h1>
-                </div>
-            `;
-            lucide.createIcons();
-        }
-
-        function renderWithdrawalRow(item) {
-            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
-            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
-            return `
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date.split(' ')[0]}<span class="block text-gray-400 text-[10px]">${item.date.split(' ')[1]}</span></td>
-                    <td class="py-3 px-4 text-sm font-bold text-orange-600 text-right">$${item.amount.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-xs text-right">
-                        <span class="font-semibold ${statusColor} flex items-center justify-end">
-                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
-                        </span>
-                        <span class="block text-gray-400 text-[10px] truncate w-24 ml-auto">${item.txnHash.split('...')[0]}...</span>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function renderBuyTPRow(item) {
-            return `
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
-                    <td class="py-3 px-4 text-sm font-bold text-gray-800 text-right">$${item.amount.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-xs text-right">
-                        <span class="font-bold text-green-600">$${item.dailyEarning}</span>
-                        <span class="block text-gray-400 text-[10px]">(${item.label})</span>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function renderDailyEarningRow(item) {
-            return `
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
-                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">$${item.amount}</td>
-                    <td class="py-3 px-4 text-xs text-right text-gray-700">${item.rate}</td>
-                </tr>
-            `;
-        }
-
-        function renderWeekendEarnRow(item) {
-            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
-            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
-            const totalReturn = item.amount + item.returnAmount;
-            return `
-                <tr class="border-b border-gray-100 hover:bg-yellow-50">
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date.split(' ')[0]}<span class="block text-gray-400 text-[10px]">${item.date.split(' ')[1]}</span></td>
-                    <td class="py-3 px-4 text-sm font-bold text-yellow-800 text-right">$${item.amount.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-xs text-right">
-                        <span class="font-bold text-green-600">$${item.returnAmount.toFixed(2)}</span>
-                        <span class="block text-gray-400 text-[10px]">(30.0% Profit)</span>
-                    </td>
-                    <td class="py-3 px-4 text-xs text-center">
-                        <span class="font-semibold ${statusColor} flex items-center justify-center">
-                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function renderPaginatedHistory(data, tableBodyId, currentPage, itemsPerPage, renderRowFn, paginationContainerId, viewId, setPageFn) {
-            const tableBody = document.getElementById(tableBodyId);
-            const startIndex = (currentPage - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedData = data.slice(startIndex, endIndex);
-
-            tableBody.innerHTML = paginatedData.map(renderRowFn).join('');
-            renderPaginationControls(data.length, itemsPerPage, currentPage, viewId, paginationContainerId, setPageFn);
-            lucide.createIcons();
-        }
-
-        // --- Pagination Logic (Reusable) --- 
-        let currentTPHistoryPage = 1;
-        let currentWithdrawalPage = 1;
-        let currentDailyEarningPage = 1;
-        let currentWeekendEarnPage = 1;
-        const ITEMS_PER_PAGE = 10;
-
-        // Setters for pagination
-        const setTPPage = (page) => { currentTPHistoryPage = page; };
-        const setWithdrawalPage = (page) => { currentWithdrawalPage = page; };
-        const setDailyPage = (page) => { currentDailyEarningPage = page; };
-        const setWeekendEarnPage = (page) => { currentWeekendEarnPage = page; };
-
+        // --- Pagination Logic (Reusable) ---
         function renderPaginationControls(totalItems, itemsPerPage, currentPage, targetViewId, paginationContainerId, setPageFn) {
             const container = document.getElementById(paginationContainerId);
             const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -1213,7 +808,10 @@
             prevButton.className = 'pagination-button bg-gray-200 text-gray-700';
             prevButton.disabled = currentPage === 1;
             prevButton.innerHTML = '<i data-lucide="chevron-left" class="w-4 h-4"></i>';
-            prevButton.onclick = () => { setPageFn(currentPage - 1); navigateTo(targetViewId); };
+            prevButton.onclick = () => {
+                setPageFn(currentPage - 1);
+                navigateTo(targetViewId);
+            };
             container.appendChild(prevButton);
 
             // Page Number Buttons
@@ -1221,7 +819,10 @@
                 let button = document.createElement('button');
                 button.className = `pagination-button ${i === currentPage ? 'active' : 'bg-gray-200 text-gray-700'}`;
                 button.textContent = i;
-                button.onclick = () => { setPageFn(i); navigateTo(targetViewId); };
+                button.onclick = () => {
+                    setPageFn(i);
+                    navigateTo(targetViewId);
+                };
                 container.appendChild(button);
             }
 
@@ -1230,38 +831,165 @@
             nextButton.className = 'pagination-button bg-gray-200 text-gray-700';
             nextButton.disabled = currentPage === totalPages;
             nextButton.innerHTML = '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
-            nextButton.onclick = () => { setPageFn(currentPage + 1); navigateTo(targetViewId); };
+            nextButton.onclick = () => {
+                setPageFn(currentPage + 1);
+                navigateTo(targetViewId);
+            };
             container.appendChild(nextButton);
 
             lucide.createIcons();
         }
 
+        function renderWithdrawalRow(item) {
+            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
+            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm font-bold text-gray-800">$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date.split(' ')[0]}</td>
+                    <td class="py-3 px-4 text-xs text-right">
+                        <span class="font-semibold ${statusColor} flex items-center justify-end">
+                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
+                        </span>
+                        <span class="block text-gray-400 text-[10px] truncate w-24 ml-auto">${item.txnHash}</span>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderBuyTPRow(item) {
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-gray-800 text-right">$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-xs text-right">
+                        <span class="font-bold text-green-600">$${item.dailyEarning}</span>
+                        <span class="block text-gray-400 text-[10px]">(${item.label})</span>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        function renderDailyEarningRow(item) {
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">$${item.amount}</td>
+                    <td class="py-3 px-4 text-xs text-right text-gray-700">${item.rate}</td>
+                </tr>
+            `;
+        }
+
+        function renderWeekendEarnRow(item) {
+            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
+            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
+            const totalReturn = item.amount + item.returnAmount;
+            return `
+                <tr class="border-b border-gray-100 hover:bg-yellow-50">
+                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date.split(' ')[0]}<span class="block text-gray-400 text-[10px]">${item.date.split(' ')[1]}</span></td>
+                    <td class="py-3 px-4 text-sm font-bold text-yellow-800 text-right">$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">
+                        + $${item.returnAmount.toFixed(2)}
+                        <span class="block text-gray-400 text-[10px]">Total: $${totalReturn.toFixed(2)}</span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-center">
+                        <span class="font-semibold ${statusColor} flex items-center justify-center">
+                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }
+
+
         function renderWithdrawalHistory(page) {
-            renderPaginatedHistory(mockWithdrawalHistory, 'withdrawalHistoryBody', page, ITEMS_PER_PAGE, renderWithdrawalRow, 'withdrawalHistoryPagination', 'withdrawalView', setWithdrawalPage);
+            const body = document.getElementById('withdrawalHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockWithdrawalHistory.slice(startIndex, endIndex);
+
+            body.innerHTML = paginatedItems.map(renderWithdrawalRow).join('');
+
+            renderPaginationControls(
+                mockWithdrawalHistory.length,
+                itemsPerPage,
+                page,
+                'withdrawalView',
+                'withdrawalHistoryPagination',
+                (p) => withdrawalHistoryCurrentPage = p
+            );
+            lucide.createIcons();
         }
 
         function renderBuyTPHistory(page) {
-            renderPaginatedHistory(mockBuyTPHistory, 'buyTPHistoryBody', page, ITEMS_PER_PAGE, renderBuyTPRow, 'buyTPHistoryPagination', 'buyTPHistoryView', setTPPage);
-        }
+            const body = document.getElementById('buyTPHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockBuyTPHistory.slice(startIndex, endIndex);
 
+            body.innerHTML = paginatedItems.map(renderBuyTPRow).join('');
+
+            renderPaginationControls(
+                mockBuyTPHistory.length,
+                itemsPerPage,
+                page,
+                'buyTPHistoryView',
+                'buyTPHistoryPagination',
+                (p) => buyTPHistoryCurrentPage = p
+            );
+            lucide.createIcons();
+        }
+        
         function renderDailyEarningHistory(page) {
-            renderPaginatedHistory(mockDailyEarningHistory, 'dailyEarningHistoryBody', page, ITEMS_PER_PAGE, renderDailyEarningRow, 'dailyEarningHistoryPagination', 'dailyEarningHistoryView', setDailyPage);
+            const body = document.getElementById('dailyEarningHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockDailyEarningHistory.slice(startIndex, endIndex);
+
+            body.innerHTML = paginatedItems.map(renderDailyEarningRow).join('');
+
+            renderPaginationControls(
+                mockDailyEarningHistory.length,
+                itemsPerPage,
+                page,
+                'dailyEarningHistoryView',
+                'dailyEarningHistoryPagination',
+                (p) => dailyEarningHistoryCurrentPage = p
+            );
+            lucide.createIcons();
         }
 
         function renderWeekendEarnHistory(page) {
-            renderPaginatedHistory(mockWeekendEarnHistory, 'weekendEarnHistoryBody', page, ITEMS_PER_PAGE, renderWeekendEarnRow, 'weekendEarnHistoryPagination', 'weekendEarnHistoryView', setWeekendEarnPage);
+            const body = document.getElementById('weekendEarnHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockWeekendEarnHistory.slice(startIndex, endIndex);
+
+            body.innerHTML = paginatedItems.map(renderWeekendEarnRow).join('');
+
+            renderPaginationControls(
+                mockWeekendEarnHistory.length,
+                itemsPerPage,
+                page,
+                'weekendEarnHistoryView',
+                'weekendEarnHistoryPagination',
+                (p) => weekendEarnHistoryCurrentPage = p
+            );
+            lucide.createIcons();
         }
 
         function renderAITradingStatus() {
             const body = document.getElementById('aiTradingHistoryBody');
-            const html = mockAITradingHistory.map(item => {
+            let html = mockAITradingHistory.map(item => {
                 const isProfit = item.profit >= 0;
-                const profitColor = isProfit ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+                const profitColor = isProfit ? 'text-green-500 bg-green-50' : 'text-red-500 bg-red-50';
+                const sideColor = item.position === 'Long' ? 'text-green-600' : 'text-red-600';
+
                 return `
                     <tr class="border-b border-gray-700 hover:bg-gray-800 transition">
-                        <td class="py-3 px-2 text-xs font-semibold text-white">
-                            <span class="block">${item.pair}</span>
-                            <span class="block text-[10px] ${item.position === 'Long' ? 'text-green-400' : 'text-red-400'}">${item.position}</span>
+                        <td class="py-3 px-2 text-xs font-bold text-white">
+                            ${item.pair}
+                            <span class="block text-[10px] font-semibold ${sideColor}">${item.position}</span>
                         </td>
                         <td class="py-3 px-2 text-xs font-semibold text-gray-600">${item.leverage}</td>
                         <td class="py-3 px-2 text-xs text-right">
@@ -1289,7 +1017,7 @@
                 const statusLabel = daysRemaining > 0 ? `${daysRemaining} Days Left` : 'Expired!';
                 const statusColor = daysRemaining > 0 ? 'text-green-600' : 'text-red-600';
                 const cardBorder = daysRemaining > 0 ? 'border-green-300' : 'border-red-300';
-                
+
                 // Calculate estimated daily return
                 const dailyReturn = (item.amount * item.dailyEarning).toFixed(4);
 
@@ -1301,75 +1029,321 @@
                             </h3>
                             <span class="font-bold text-lg ${statusColor} bg-gray-100 px-3 py-1 rounded-full">${statusLabel}</span>
                         </div>
-                        <div class="flex justify-between text-sm font-medium">
-                            <div class="text-center">
-                                <p class="text-gray-500">Active Date</p>
-                                <p class="font-bold text-gray-700">${item.startDate}</p>
+                        <div class="flex justify-between items-center text-sm font-medium">
+                            <div class="flex items-center text-gray-700">
+                                <i data-lucide="zap" class="w-4 h-4 mr-1 text-green-500"></i> Daily ROI: 
+                                <span class="font-bold text-green-600 ml-1">${(item.dailyEarning * 100).toFixed(1)}%</span>
                             </div>
-                            <div class="text-center">
-                                <p class="text-gray-500">TP Rate</p>
-                                <p class="font-bold text-green-600">${(item.dailyEarning * 100).toFixed(1)}%</p>
-                            </div>
-                            <div class="text-center">
-                                <p class="text-gray-500">Daily Est. Earning</p>
-                                <p class="font-bold text-green-700">$${dailyReturn}</p>
+                            <div class="flex items-center text-gray-700">
+                                <i data-lucide="dollar-sign" class="w-4 h-4 mr-1 text-purple-500"></i> Daily \$ Return: 
+                                <span class="font-bold text-purple-600 ml-1">$${dailyReturn}</span>
                             </div>
                         </div>
-
-                        <div class="pt-2">
-                            <p class="text-xs text-gray-500 mb-1">Validity Progress: ${item.activeDays}/${item.daysTotal} days</p>
-                            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                <div class="h-2.5 rounded-full ${progressColor}" style="width: ${percentage}%"></div>
-                            </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="${progressColor} h-2.5 rounded-full" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>Started: ${item.activeDays} days ago</span>
+                            <span>Total Duration: ${item.daysTotal} days</span>
                         </div>
                     </div>
                 `;
             }).join('');
+            
+            if (mockUserTPPackages.length === 0) {
+                 html = `<p class="text-center py-10 text-gray-500 font-semibold">You do not have any active Trade Power packages. Invest now!</p>`;
+            }
+            
             list.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // --- Buy TP Logic ---
+        const usdtInput = document.getElementById('usdtAmount');
+        const buyButton = document.getElementById('buyNowButton');
+        const rateDisplay = document.getElementById('dailyRateDisplay');
+        const amountDisplay = document.getElementById('dailyReturnAmount');
+
+        function calculateReturn(usdtValue) {
+            const amount = parseFloat(usdtValue);
+            const minInvest = 10;
+            
+            if (isNaN(amount) || amount < minInvest) {
+                rateDisplay.textContent = '0%';
+                amountDisplay.textContent = '0.00 USDT';
+                buyButton.disabled = true;
+                buyButton.classList.add('opacity-50', 'cursor-not-allowed');
+                buyButton.classList.remove('hover:opacity-95');
+                buyButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Min ${minInvest} USDT)`;
+                lucide.createIcons();
+                return;
+            }
+
+            const tier = roiTiers.find(t => amount >= t.threshold);
+            const rate = tier ? tier.rate : roiTiers[roiTiers.length - 1].rate;
+            const rateLabel = tier ? tier.label : '5.5%';
+            const dailyReturn = amount * rate;
+            
+            rateDisplay.textContent = rateLabel;
+            amountDisplay.textContent = `${dailyReturn.toFixed(4)} USDT`;
+            buyButton.disabled = false;
+            buyButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            buyButton.classList.add('hover:opacity-95');
+            buyButton.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Open Gateway)';
+            lucide.createIcons();
+        }
+
+        function simulateGateway() {
+            const amount = usdtInput.value;
+            if (parseFloat(amount) < 10) {
+                showMessage('Investment Error', 'Minimum investment is 10 USDT.');
+                return;
+            }
+
+            // Simulate history update
+            const roi = getRoiDetails(parseFloat(amount));
+            const newEntry = {
+                id: mockBuyTPHistory.length + 1,
+                amount: parseFloat(amount),
+                date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                ...roi
+            };
+            mockBuyTPHistory.unshift(newEntry);
+            
+            // Clear form and navigate back to dashboard
+            usdtInput.value = '';
+            calculateReturn(0);
+
+            // Update user's TP
+            const newTP = parseFloat(amount) / 200; // Mock calculation
+            showMessage('TP Purchased!', `Successfully bought ${newTP.toFixed(2)} TP with ${parseFloat(amount).toFixed(2)} USDT! Your new daily ROI is ${roi.label}.`);
+            navigateTo('dashboardView');
+        }
+
+        // --- Weekend Earn Logic (UPDATED) ---
+        const weekendAmountInput = document.getElementById('weekendAmount');
+        const weekendBuyButton = document.getElementById('weekendBuyButton');
+        const weekendRateDisplay = document.getElementById('weekendRateDisplay');
+        const weekendReturnAmount = document.getElementById('weekendReturnAmount');
+        const WEEKEND_RATE = 0.30; // 30% return
+        const WEEKEND_MIN_INVEST = 100; 
+        const weekendDashboardButton = document.getElementById('weekendDashboardButton');
+        const restrictionText = document.getElementById('weekendRestrictionText');
+
+        function calculateWeekendReturn(usdtValue) {
+            const amount = parseFloat(usdtValue);
+            const minInvest = WEEKEND_MIN_INVEST;
+            
+            if (hasInvestedThisWeek) {
+                // If already invested, prevent calculation/button activation
+                weekendRateDisplay.textContent = '30%';
+                weekendReturnAmount.textContent = '0.00 USDT';
+                weekendBuyButton.disabled = true;
+                return;
+            }
+
+            if (isNaN(amount) || amount < minInvest) {
+                weekendRateDisplay.textContent = '30%';
+                weekendReturnAmount.textContent = '0.00 USDT';
+                weekendBuyButton.disabled = true;
+                weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
+                weekendBuyButton.classList.remove('hover:opacity-95');
+                // Updated button text
+                weekendBuyButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (Min ${minInvest} USDT)`;
+                lucide.createIcons();
+                return;
+            }
+
+            const totalReturn = amount * WEEKEND_RATE;
+            weekendReturnAmount.textContent = `${totalReturn.toFixed(4)} USDT`;
+            weekendBuyButton.disabled = false;
+            weekendBuyButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            weekendBuyButton.classList.add('hover:opacity-95');
+            weekendBuyButton.innerHTML = `<i data-lucide="zap" class="w-5 h-5 mr-2 inline-block"></i> Confirm Investment (${amount.toFixed(2)} USDT)`;
+            lucide.createIcons();
+        }
+
+        function simulateWeekendGateway() {
+            const amount = parseFloat(weekendAmountInput.value);
+            if (isNaN(amount) || amount < WEEKEND_MIN_INVEST || hasInvestedThisWeek) {
+                showMessage('Investment Error', `Minimum investment is ${WEEKEND_MIN_INVEST} USDT and can only be done once per week.`);
+                return;
+            }
+
+            const returnAmount = amount * WEEKEND_RATE;
+            const totalReturn = amount + returnAmount;
+
+            // 1. Update state
+            hasInvestedThisWeek = true;
+            
+            // 2. Add to history
+            const newEntry = {
+                id: mockWeekendEarnHistory.length + 1,
+                amount: amount,
+                date: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                returnAmount: returnAmount,
+                status: 'Processing'
+            };
+            mockWeekendEarnHistory.unshift(newEntry);
+
+            // 3. Clear form and navigate back to dashboard/update view
+            weekendAmountInput.value = '';
+            checkWeekendEligibility(); // Apply restrictions
+            navigateTo('dashboardView');
+
+            showMessage(
+                'Weekend Investment Initiated',
+                `Successfully invested ${parseFloat(amount).toFixed(2)} USDT into WEEKEND EARN FAST! You are expected to receive ${totalReturn.toFixed(2)} USDT profit in 48 hours. (Weekly Limit Used)`
+            );
+        }
+        
+        function checkWeekendEligibility() {
+            // Dashboard Button Update
+            if (weekendDashboardButton) {
+                if (hasInvestedThisWeek) {
+                    weekendDashboardButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    weekendDashboardButton.classList.remove('hover:bg-yellow-500');
+                    weekendDashboardButton.textContent = 'LIMIT USED';
+                    weekendDashboardButton.setAttribute('disabled', 'true');
+                } else {
+                    weekendDashboardButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    weekendDashboardButton.classList.add('hover:bg-yellow-500');
+                    weekendDashboardButton.textContent = "LET'S GO";
+                    weekendDashboardButton.removeAttribute('disabled');
+                }
+            }
+
+            // Weekend View Update
+            if (weekendAmountInput && restrictionText) {
+                const minInvest = WEEKEND_MIN_INVEST;
+                if (hasInvestedThisWeek) {
+                    weekendAmountInput.setAttribute('disabled', 'true');
+                    weekendAmountInput.value = '';
+                    weekendAmountInput.placeholder = 'Already invested this week';
+                    weekendBuyButton.setAttribute('disabled', 'true');
+                    weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    weekendBuyButton.classList.remove('hover:opacity-95');
+                    weekendBuyButton.innerHTML = '<i data-lucide="x-circle" class="w-5 h-5 mr-2 inline-block"></i> Weekly Limit Reached';
+                    restrictionText.innerHTML = `<span class="font-bold text-red-500">🚫 Weekly Limit Reached:</span> You must wait until next week to invest again. (Minimum ${minInvest} USDT)`;
+                } else {
+                    weekendAmountInput.removeAttribute('disabled');
+                    weekendAmountInput.placeholder = `Min. ${minInvest} USDT`;
+                    restrictionText.innerHTML = `Invest for a short-term, high-return opportunity. (Minimum ${minInvest} USDT, **Once per week**)`;
+                    // Reset button/calculation state
+                    calculateWeekendReturn(weekendAmountInput.value);
+                }
+                lucide.createIcons();
+            }
+        }
+
+        // --- Referral Logic ---
+        const referralTableBody = document.getElementById('referralTableBody');
+        const levelUsersTitle = document.getElementById('levelUsersTitle');
+        const levelUsersList = document.getElementById('levelUsersList');
+        const referralLinkInput = document.getElementById('referralLink');
+
+        function populateReferralTable() {
+            let html = '';
+            mockReferralData.forEach(data => {
+                const isHighlighted = data.level === 1; // Highlight Level 1 only
+                html += `
+                    <tr class="border-b border-gray-100 ${isHighlighted ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}">
+                        <td class="py-3 px-4 text-xs font-bold text-gray-800">${data.level}</td>
+                        <td class="py-3 px-4 text-xs text-center font-medium text-gray-600">${data.users + (parseInt(TG_USER_ID.slice(-1)) || 0)}</td>
+                        <td class="py-3 px-4 text-xs text-right font-medium text-gray-600">$${data.deposited.toLocaleString()}</td>
+                        <td class="py-3 px-4 text-xs text-right font-bold text-green-600">$${data.earnings.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-xs text-center">
+                            <button onclick="showLevelUsers(${data.level})" class="text-blue-500 hover:text-blue-700 text-xs font-semibold px-2 py-1 rounded-full border border-blue-200 hover:bg-blue-50 transition">
+                                Preview (${data.users + (parseInt(TG_USER_ID.slice(-1)) || 0)})
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            referralTableBody.innerHTML = html;
+
+            // Referral Link को TG User ID से अपडेट करें
+            if (referralLinkInput) {
+                referralLinkInput.value = `https://ai.earn/invite/${TG_USER_ID}`;
+            }
+        }
+
+        function copyReferralLink() {
+            const linkInput = document.getElementById('referralLink');
+            linkInput.select();
+            document.execCommand('copy');
+            showMessage('Success!', 'Your Referral link has been copied to the clipboard.');
+            
+            // 🟢 8. Telegram Web App को कॉपी फ़ीडबैक दें
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
+        function showLevelUsers(level) {
+            const levelData = mockReferralData.find(d => d.level === level);
+            if (!levelData) return;
+
+            levelUsersTitle.innerHTML = `<i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level ${level} (लेवल ${level} के उपयोगकर्ता)`;
+            
+            let usersHtml = levelData.usersDetail.map(user => `
+                <div class="p-4 bg-gray-50 rounded-xl shadow-inner flex justify-between items-center border border-gray-200">
+                    <div>
+                        <p class="font-semibold text-gray-800">${user.name}</p>
+                        <p class="text-xs text-gray-500">Joined: ${user.datetime}</p>
+                    </div>
+                    <span class="font-bold text-lg text-green-600">$${user.deposit.toLocaleString()}</span>
+                </div>
+            `).join('');
+
+            if (levelData.usersDetail.length === 0) {
+                 usersHtml = `<p class="text-center py-10 text-gray-500 font-semibold">No active user details to display for this level yet.</p>`;
+            }
+
+            levelUsersList.innerHTML = usersHtml;
+            
+            navigateTo('levelUsersView');
         }
 
         // --- Withdrawal Logic ---
         const withdrawalAmountInput = document.getElementById('withdrawalAmount');
-        const walletAddressInput = document.getElementById('walletAddress');
 
         function simulateWithdrawal() {
             const amount = parseFloat(withdrawalAmountInput.value);
-            const address = walletAddressInput.value;
-            const minWithdrawal = 20;
-            const fee = 5;
+            const minWithdraw = 10;
+            const availableBalance = MOCK_AVAILABLE_BALANCE;
 
-            if (isNaN(amount) || amount < minWithdrawal) {
-                showMessage('Withdrawal Error', `Minimum withdrawal amount is ${minWithdrawal} USDT.`);
+            if (isNaN(amount) || amount < minWithdraw) {
+                showMessage('Withdrawal Error', `Minimum withdrawal amount is ${minWithdraw} USDT.`);
                 return;
             }
 
-            if (amount > MOCK_AVAILABLE_BALANCE) {
-                showMessage('Withdrawal Error', `Insufficient balance. Available: ${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT.`);
+            if (amount > availableBalance) {
+                showMessage('Withdrawal Error', `Insufficient balance. Available: ${availableBalance.toFixed(2)} USDT.`);
                 return;
             }
 
-            if (address.length < 10) { // Simple mock validation
-                showMessage('Withdrawal Error', 'Please enter a valid wallet address.');
-                return;
-            }
-
-            // Simulate withdrawal
-            MOCK_AVAILABLE_BALANCE -= amount;
-            MOCK_AVAILABLE_BALANCE -= fee; // Deduct fee
+            // Simulate fee calculation (1 USDT + 1%)
+            const fee = 1 + (amount * 0.01);
+            const netAmount = amount - fee;
             
-            const newWithdrawal = { id: mockWithdrawalHistory.length + 1, amount: amount, date: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0].slice(0, 5) + ':00', txnHash: 'Processing...', status: 'Processing' };
+            // Update mock balance
+            MOCK_AVAILABLE_BALANCE -= amount;
+            document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600').textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+
+            // Add to mock history
+            const newWithdrawal = { id: mockWithdrawalHistory.length + 1, amount: amount, date: new Date().toISOString().split('T')[0], txnHash: 'Processing...', status: 'Processing' };
             mockWithdrawalHistory.unshift(newWithdrawal);
             
             renderWithdrawalHistory(1); // Re-render first page
             withdrawalAmountInput.value = ''; // Clear input
-
-            // Update balance display in withdrawal view
-            const balanceSpan = document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600');
-            if (balanceSpan) {
-                balanceSpan.textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+            
+            showMessage('Withdrawal Initiated', `Your request for ${amount.toFixed(2)} USDT (Net: ${netAmount.toFixed(2)} USDT) has been submitted. It is now processing.`);
+            
+            // 🟢 9. Telegram Web App को सक्सेस फ़ीडबैक दें
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             }
-
-            showMessage('Withdrawal Initiated', `Your request for ${amount.toFixed(2)} USDT has been submitted. It is now processing.`);
         }
 
         // NEW FUNCTION: Auto-invest all available balance to TP
@@ -1377,44 +1351,164 @@
             // NOTE: This is a simulation.
             const amount = MOCK_AVAILABLE_BALANCE;
             const minReinvest = 10;
-            
+            const newBalance = 0;
+
             if (amount < minReinvest) {
                 showMessage('Re-invest Error', `Minimum re-investment amount is ${minReinvest} USDT. Available: ${amount.toFixed(2)} USDT.`);
                 return;
             }
-
+            
             // 1. Simulate TP purchase logic (get ROI details)
             const roi = getRoiDetails(amount);
-
-            // 2. Simulate adding a new TP package (20-day validity)
+            
+            // 2. Add a new TP package (mocking)
             const newTPPackage = {
-                id: mockUserTPPackages.length + 101, 
-                amount: amount, 
-                dailyEarning: roi.rate, 
-                activeDays: 0, 
-                daysTotal: 20, 
-                startDate: new Date().toISOString().split('T')[0], 
-                endDate: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString().split('T')[0]
+                id: mockUserTPPackages.length + 1,
+                amount: amount,
+                daysTotal: 20,
+                activeDays: 0,
+                dailyEarning: roi.rate
             };
             mockUserTPPackages.push(newTPPackage);
             
-            // 3. Reset available balance
-            MOCK_AVAILABLE_BALANCE = 0;
+            // 3. Update mock balance
+            MOCK_AVAILABLE_BALANCE = newBalance;
+            // Update the display immediately
+            document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600').textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
 
-            // 4. Update the UI 
-            const balanceSpan = document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600');
-            if (balanceSpan) {
-                balanceSpan.textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+            // 4. Disable the button after reinvestment
+            const reinvestBtn = document.getElementById('reinvestButton');
+            if (reinvestBtn) {
+                reinvestBtn.disabled = true;
+                reinvestBtn.classList.add('opacity-50');
             }
 
             showMessage(
-                'TP Re-investment Successful', 
+                'TP Re-investment Successful',
                 `Successfully re-invested ${amount.toFixed(2)} USDT into Trade Power (TP). Your daily earnings will increase!`
             );
+             // 🟢 10. Telegram Web App को सक्सेस फ़ीडबैक दें
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
         }
 
 
-        // Simple message box function instead of alert()
+        // --- General View Navigation and UI Management ---
+        function renderHeader(viewId) {
+            const header = document.getElementById('header');
+            let title = viewTitles[viewId] || 'AiEarn';
+            let backButtonHtml = '';
+            
+            if (viewId !== 'dashboardView') {
+                // Determine the correct view to go back to
+                let backToView = 'dashboardView';
+                if (viewId === 'levelUsersView') {
+                    backToView = 'referEarnView'; // Go back to Refer & Earn from User List
+                } else if (viewId === 'buyTPHistoryView') {
+                    backToView = 'buyTPView'; // Go back to Buy TP form from History
+                } else if (viewId === 'weekendEarnHistoryView') {
+                    backToView = 'weekendEarnView'; // Go back to Weekend Earn form from History
+                }
+                
+                backButtonHtml = `
+                    <button onclick="navigateTo('${backToView}')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+                        <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                    </button>
+                `;
+            }
+
+            header.innerHTML = `
+                <div class="max-w-lg mx-auto flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        ${backButtonHtml}
+                        <h1 class="text-xl font-extrabold text-gray-800">${title}</h1>
+                    </div>
+                    <button onclick="console.log('Settings')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+                        <i data-lucide="bell" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function navigateTo(viewId) {
+            // Hide all views
+            document.querySelectorAll('#appContainer > section').forEach(view => {
+                view.classList.remove('view');
+                view.classList.add('hidden-view');
+            });
+
+            // Show the target view
+            const newView = document.getElementById(viewId);
+            if (newView) {
+                newView.classList.remove('hidden-view');
+                newView.classList.add('view');
+            } else {
+                console.error(`View ID not found: ${viewId}`);
+                return;
+            }
+
+            currentPage = viewId;
+            renderHeader(viewId);
+
+            // --- Special initialization for specific views ---
+            if (viewId === 'dashboardView' || viewId === 'weekendEarnView') {
+                checkWeekendEligibility();
+            }
+
+            if (viewId === 'referEarnView') {
+                populateReferralTable();
+            } else if (viewId === 'weekendEarnHistoryView') {
+                renderWeekendEarnHistory(weekendEarnHistoryCurrentPage);
+            } else if (viewId === 'withdrawalView') {
+                const balanceSpan = document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600');
+                if (balanceSpan) {
+                    balanceSpan.textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+                }
+                const reinvestBtn = document.getElementById('reinvestButton');
+                if (reinvestBtn) {
+                    reinvestBtn.disabled = false;
+                    reinvestBtn.classList.remove('opacity-50');
+                }
+                renderWithdrawalHistory(withdrawalHistoryCurrentPage);
+            } else if (viewId === 'buyTPHistoryView') {
+                renderBuyTPHistory(buyTPHistoryCurrentPage);
+            } else if (viewId === 'dailyEarningHistoryView') {
+                renderDailyEarningHistory(dailyEarningHistoryCurrentPage);
+            } else if (viewId === 'aiTradingStatusView') {
+                renderAITradingStatus();
+            } else if (viewId === 'myTradePowerView') {
+                renderMyTradePower();
+            }
+        }
+
+
+        // --- Other Feature Logic ---
+        
+        const timerElement = document.getElementById('settlement-timer');
+        let totalSeconds = (19 * 3600) + (44 * 60) + 22;
+
+        function formatTime(seconds) {
+            const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const s = String(seconds % 60).padStart(2, '0');
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        function updateTimer() {
+            if (timerElement) {
+                timerElement.textContent = `Settlement time: ${formatTime(totalSeconds)}`;
+            }
+
+            if (totalSeconds > 0) {
+                totalSeconds--;
+            } else {
+                totalSeconds = (24 * 3600) - 1; // Reset to almost 24 hours
+                showMessage('Settlement Complete', 'Daily earning settlement has been processed! Your balance has been updated.');
+            }
+        }
+        
         function showMessage(title, message) {
             const messageBox = document.createElement('div');
             messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
@@ -1428,9 +1522,61 @@
             document.body.appendChild(messageBox);
         }
 
+        // 🟢 11. Telegram Web App Initialization Logic
+        function initializeTelegramWebApp() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.ready();
+                
+                // Hide main button if it's not needed (standard for mini apps)
+                window.Telegram.WebApp.MainButton.hide();
+
+                // 🟢 Telegram Theme Colors लागू करें
+                const themeParams = window.Telegram.WebApp.themeParams;
+                if (themeParams) {
+                    document.documentElement.style.setProperty('--tg-bg-color', themeParams.bg_color || '#f0f2f5');
+                    document.documentElement.style.setProperty('--tg-text-color', themeParams.text_color || '#1f2937');
+                    document.documentElement.style.setProperty('--tg-hint-color', themeParams.hint_color || '#9ca3af');
+                }
+                
+                // 🟢 User Data प्राप्त करें
+                const userData = window.Telegram.WebApp.initDataUnsafe.user;
+                if (userData) {
+                    TG_INIT_DATA = window.Telegram.WebApp.initDataUnsafe;
+                    TG_USER_ID = userData.id.toString();
+                    
+                    // User का पूरा नाम या Username प्राप्त करें
+                    let userName = userData.first_name || '';
+                    if (userData.last_name) {
+                        userName += ' ' + userData.last_name;
+                    }
+                    if (userData.username) {
+                        userName += ` (@${userData.username})`;
+                    }
+                    TG_USERNAME = userName.trim() || `User_${TG_USER_ID}`;
+                }
+                
+                // 🟢 User ID को Withdrawal View में अपडेट करें
+                const userDisplay = document.getElementById('tgUserDisplay');
+                const userLabel = document.getElementById('tgUserLabel');
+
+                if (userDisplay && TG_USER_ID !== '000000000') {
+                    userDisplay.textContent = TG_USER_ID;
+                    userLabel.textContent = `Telegram ID (${TG_USERNAME}):`;
+                }
+
+                // Referral Link को अपडेट करें
+                if (referralLinkInput) {
+                    referralLinkInput.value = `https://ai.earn/invite/${TG_USER_ID}`;
+                }
+            } else {
+                console.warn('Telegram WebApp not found. Using fallback mock data.');
+            }
+        }
+
+
         // --- Initialization ---
         window.onload = function() {
-            // 🟢 3. Telegram WebApp को initialize करें 🟢
+            // 🟢 12. Telegram WebApp को initialize करें
             initializeTelegramWebApp(); 
             
             // Initializing all view elements for navigation logic
@@ -1442,6 +1588,7 @@
             // Initial check to set the dashboard button state
             checkWeekendEligibility();
             navigateTo(currentPage); // Initial navigation to dashboardView
+            setInterval(updateTimer, 1000);
         };
     </script>
 </body>
