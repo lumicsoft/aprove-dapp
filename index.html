@@ -1,251 +1,1564 @@
-<?php
-// PHP सेटिंग्स: सभी त्रुटियों को दिखाएं
-error_reporting(E_ALL); 
-ini_set('display_errors', 1);
-
-// --- 1. CONFIGURATION (ऑटो-फिल्ड) ---
-// ******************************************************************
-// स्मार्ट कॉन्ट्रैक्ट और नेटवर्क सेटिंग्स
-$contractAddress = '0x251623DfE9985426bA6e3EaD2245e87c0e8610C1';
-$providerUrl = 'https://data-seed-pre-1-s1.binance.org:8545/'; 
-$initialUserAddress = '0x8c9c830E098878e7Cd6a9435d823CEFc62c6b4F0'; 
-// ******************************************************************
-
-// getSpilloverMatrixStatus(address) का फ़ंक्शन हैश
-define('FUNCTION_HASH', '7892d242'); 
-define('ZERO_ADDRESS', '0x0000000000000000000000000000000000000000');
-
-
-// --- 2. PHP / WEB3 RPC LOGIC ---
-
-/**
- * स्मार्ट कॉन्ट्रैक्ट के getSpilloverMatrixStatus को eth_call के माध्यम से कॉल करता है।
- * @param string $userAddress वह पता जिसका Matrix स्टेटस देखना है।
- * @return array [slot1Address, slot2Address]
- */
-function call_contract_status($userAddress, $contract, $provider) {
-    
-    // अगर पता खाली या ज़ीरो है, तो खाली स्लॉट वापस करें
-    if (empty($userAddress) || strtolower($userAddress) == strtolower(ZERO_ADDRESS)) {
-        return [ZERO_ADDRESS, ZERO_ADDRESS];
-    }
-    
-    // 1. इनपुट डेटा तैयार करें: function_hash + user_address (64 chars padded)
-    $cleanUserAddress = str_replace('0x', '', $userAddress);
-    $paddedAddress = str_pad($cleanUserAddress, 64, '0', STR_PAD_LEFT);
-    $data = '0x' . FUNCTION_HASH . $paddedAddress;
-
-    // 2. RPC रिक्वेस्ट बॉडी तैयार करें
-    $payload = json_encode([
-        'jsonrpc' => '2.0',
-        'method' => 'eth_call',
-        'params' => [
-            [
-                'to' => $contract,
-                'data' => $data
-            ],
-            'latest'
-        ],
-        'id' => 1
-    ]);
-
-    // 3. cURL के माध्यम से RPC कॉल करें
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $provider);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    
-    $response = curl_exec($ch);
-    $err = curl_error($ch);
-    curl_close($ch);
-
-    if ($err) {
-        // RPC कॉल में त्रुटि होने पर, खाली स्लॉट वापस करें
-        error_log("RPC Error: " . $err);
-        return [ZERO_ADDRESS, ZERO_ADDRESS];
-    }
-
-    $result = json_decode($response, true);
-
-    if (isset($result['result']) && strlen($result['result']) >= 130) {
-        $output = $result['result'];
-        
-        // Output format: 0x[64 bytes (Slot 1)] [64 bytes (Slot 2)]
-        
-        // Slot 1 (Address) - 40 characters (20 bytes) offset 26 to 66
-        $slot1Hex = substr($output, 26, 40); 
-        
-        // Slot 2 (Address) - 40 characters (20 bytes) offset 90 to 130
-        $slot2Hex = substr($output, 90, 40); 
-        
-        $slot1Address = '0x' . $slot1Hex;
-        $slot2Address = '0x' . $slot2Hex;
-        
-        return [$slot1Address, $slot2Address];
-
-    } else {
-        // कॉन्ट्रैक्ट कॉल या JSON डीकोड में त्रुटि/अमान्य परिणाम
-        error_log("Invalid RPC response for user: " . $userAddress);
-        return [ZERO_ADDRESS, ZERO_ADDRESS];
-    }
-}
-
-
-// --- 3. PHP LOGIC: 2 LEVEL FETCH ---
-
-function get_spillover_tree_data($topUserAddress, $contract, $provider) {
-    // 1. L1 बच्चे (2 सदस्य)
-    list($L1_A, $L1_B) = call_contract_status($topUserAddress, $contract, $provider);
-    
-    $tree = [
-        'self' => $topUserAddress,
-        'L1_A' => ['address' => $L1_A, 'L2' => []],
-        'L1_B' => ['address' => $L1_B, 'L2' => []]
-    ];
-    
-    // 2. L2 बच्चे (4 सदस्य)
-    if (strtolower($L1_A) != strtolower(ZERO_ADDRESS)) {
-        list($L2_A1, $L2_A2) = call_contract_status($L1_A, $contract, $provider);
-        $tree['L1_A']['L2'] = [$L2_A1, $L2_A2];
-    } else {
-        $tree['L1_A']['L2'] = [ZERO_ADDRESS, ZERO_ADDRESS];
-    }
-    
-    if (strtolower($L1_B) != strtolower(ZERO_ADDRESS)) {
-        list($L2_B1, $L2_B2) = call_contract_status($L1_B, $contract, $provider);
-        $tree['L1_B']['L2'] = [$L2_B1, $L2_B2];
-    } else {
-        $tree['L1_B']['L2'] = [ZERO_ADDRESS, ZERO_ADDRESS];
-    }
-    
-    return $tree; 
-}
-
-// URL से 'user' पता प्राप्त करें। अगर नहीं है, तो डिफ़ॉल्ट दिखाएँ।
-$topUser = $_GET['user'] ?? $initialUserAddress;
-
-// Tree डेटा फ़ेच करें
-$treeData = get_spillover_tree_data($topUser, $contractAddress, $providerUrl);
-
-
-// --- 4. RENDERING FUNCTION ---
-
-function render_node($address) {
-    // खाली/ज़ीरो पते की जाँच करें
-    if (strtolower($address) == strtolower(ZERO_ADDRESS) || empty($address)) {
-        $displayAddress = "खाली स्लॉट";
-        $className = "empty-slot";
-        return "<span class='$className'>$displayAddress</span>";
-    } else {
-        // प्रदर्शन के लिए पते को छोटा करें
-        $displayAddress = substr($address, 0, 6) . '...' . substr($address, -4);
-        $className = "user-node";
-        // क्लिकेबल लिंक: पेज को पुनः लोड करें, क्लिक किए गए यूज़र को टॉप पर सेट करें
-        $link = "?user=" . $address; 
-        
-        $html = "<a href='$link' class='$className'>";
-        $html .= $displayAddress;
-        $html .= "</a>";
-        return $html;
-    }
-}
-
-?>
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Live Spillover Matrix Tree</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiEarn Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background-color: #f4f4f9; }
-        h2 { color: #333; }
-        .info { font-size: 0.9em; color: #555; margin-bottom: 20px; }
-        .tree-container { display: inline-block; margin: 20px auto; padding: 30px; border: 1px solid #ccc; border-radius: 8px; background-color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .level { display: flex; justify-content: center; margin-bottom: 30px; position: relative; }
-        .node-container { margin: 0 15px; text-align: center; position: relative; }
-        
-        /* Node Styles */
-        .top-node, .user-node, .empty-slot { 
-            padding: 8px 15px; border-radius: 20px; font-weight: bold; color: white; display: inline-block; 
-            min-width: 120px; text-align: center; white-space: nowrap; 
+        /* Custom CSS for vibrant look and feel */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Lighter, modern background */
+            color: #1f2937; /* Darker text for contrast */
         }
-        .top-node { background-color: #007bff; }
-        .user-node { background-color: #28a745; text-decoration: none; transition: background-color 0.3s; cursor: pointer; }
-        .user-node:hover { background-color: #1e7e34; }
-        .empty-slot { background-color: #dc3545; opacity: 0.7; }
-
-        /* Tree Lines (Simplified for display) */
-        .line { border-left: 2px dashed #ccc; height: 20px; margin: 0 auto; width: 0; }
-        .level-1 { margin-top: -10px; }
-        .branch-container { width: 50%; }
-        .level-2-wrapper { display: flex; justify-content: center; width: 100%; }
-        .level-2 .branch-h-line { border-top: 2px dashed #ccc; width: calc(100% - 30px); position: absolute; top: 0; left: 15px; z-index: 1; }
-        .level-2 .node-container { z-index: 2; }
+        .green-gradient-button {
+            /* Stronger, more appealing gradient */
+            background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+        }
+        .green-gradient-button:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.6);
+        }
+        .pink-gradient-button {
+            /* Vibrant pink/red gradient */
+            background: linear-gradient(135deg, #FF3D69 0%, #FF6B8A 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(255, 61, 105, 0.4);
+        }
+        .pink-gradient-button:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(255, 61, 105, 0.6);
+        }
+        .orange-gradient-button {
+            background: linear-gradient(135deg, #F97316 0%, #FBBF24 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(249, 115, 22, 0.4);
+        }
+        .orange-gradient-button:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(249, 115, 22, 0.6);
+        }
+        .blue-gradient-button {
+            background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+        }
+        .blue-gradient-button:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.6);
+        }
+        .roi-table-header {
+            background-color: #e5e7eb;
+        }
+        .hot-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background-color: #EF4444;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 0.25rem 1.5rem;
+            transform: rotate(45deg) translate(25%, -25%);
+            transform-origin: 100% 0;
+            width: 120px;
+            text-align: center;
+        }
+        .input-usdt::-webkit-outer-spin-button,
+        .input-usdt::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .input-usdt {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        .view {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .hidden-view {
+            display: none;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pagination-button {
+            padding: 0.5rem 0.75rem;
+            margin: 0 0.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .pagination-button.active {
+            background-color: #3B82F6;
+            color: white;
+            box-shadow: 0 2px 5px rgba(59, 130, 246, 0.5);
+        }
+        .pagination-button:not(.active):hover {
+            background-color: #E5E7EB;
+        }
+        .trading-status-th {
+            background-color: #1f2937;
+            color: white;
+        }
     </style>
 </head>
-<body>
+<body class="min-h-screen">
 
-    <h2>Live Spillover Matrix Tree View (BSC Testnet)</h2>
-    <p class="info">
-        स्मार्ट कॉन्ट्रैक्ट: <strong><?php echo $contractAddress; ?></strong><br>
-        वर्तमान टॉप यूज़र: <strong><?php echo $treeData['self']; ?></strong><br>
-        (हरे पते पर क्लिक करने से वह यूज़र टॉप पर आ जाएगा और उसका 2-लेवल ट्री खुलेगा।)
-    </p>
+    <header id="header" class="bg-white p-4 shadow-md sticky top-0 z-20"></header>
 
-    <div class="tree-container">
+    <div id="appContainer" class="max-w-lg mx-auto p-4 space-y-5 pb-24">
         
-        <div class="level level-0">
-            <div class="node-container">
-                <span class="top-node">TOP: <?php echo substr($treeData['self'], 0, 6) . '...'; ?></span>
-                <div class="line"></div>
-            </div>
-        </div>
-
-        <div class="level level-1">
+        <section id="dashboardView" data-view="dashboard" class="view space-y-5">
             
-            <div class="node-container">
-                <div class="line"></div>
-                <?php echo render_node($treeData['L1_A']['address']); ?>
-            </div>
-            
-            <div class="node-container">
-                <div class="line"></div>
-                <?php echo render_node($treeData['L1_B']['address']); ?>
+            <div class="flex justify-between items-center text-sm font-medium">
+                <span class="text-gray-600 font-semibold">You Earned:</span>
+                <div class="flex items-center space-x-3">
+                    <span class="bg-white rounded-full px-4 py-1.5 text-green-600 border border-green-300 shadow-md flex items-center">
+                        <i data-lucide="gem" class="w-4 h-4 mr-1.5 text-green-500"></i> <span class="font-bold text-base">0.0295</span>
+                    </span>
+                    <button onclick="navigateTo('withdrawalView')" class="flex items-center bg-orange-500 text-white rounded-full px-4 py-1.5 text-sm font-bold hover:bg-orange-600 transition shadow-md">
+                        Withdraw <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                    </button>
+                    <button onclick="console.log('Support')" class="text-blue-500 hover:text-blue-700 p-1 rounded-full">
+                        <i data-lucide="send" class="w-5 h-5"></i>
+                    </button>
+                </div>
             </div>
 
-        </div>
+            <div class="bg-gray-800 rounded-xl p-3 flex justify-between items-center shadow-2xl border-l-4 border-green-500">
+                <div class="flex items-center">
+                    <i data-lucide="zap" class="w-6 h-6 text-yellow-400 mr-2"></i>
+                    <span class="text-white text-base font-semibold">WEEKEND EARN FAST</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-green-400 text-xl font-extrabold mr-2">Earn ⬆30%</span>
+                    <span class="text-white text-sm">in 48h</span>
+                </div>
+                <button id="weekendDashboardButton" onclick="navigateTo('weekendEarnView')" class="bg-yellow-400 text-gray-900 text-xs font-extrabold px-3 py-1.5 rounded-full hover:bg-yellow-500 transition">
+                    LET'S GO
+                </button>
+            </div>
 
-        <div class="level level-2">
-            <div class="level-2-wrapper">
-                <div class="branch-container">
-                    <div class="branch-h-line"></div>
-                    <div class="node-container">
-                        <div class="line"></div>
-                        <?php echo render_node($treeData['L1_A']['L2'][0]); ?>
+            <div class="bg-white p-6 rounded-3xl shadow-2xl text-center border border-gray-100">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center">
+                        <span class="text-gray-600 font-semibold text-lg">TP (Trade Power)</span>
+                        <i data-lucide="info" class="w-4 h-4 text-gray-400 ml-1 cursor-pointer"></i>
                     </div>
-                    <div class="node-container">
-                        <div class="line"></div>
-                        <?php echo render_node($treeData['L1_A']['L2'][1]); ?>
+                    <i data-lucide="refresh-ccw" class="w-5 h-5 text-blue-500 cursor-pointer hover:rotate-180 transition duration-500"></i>
+                </div>
+
+                <div class="flex items-center justify-center mb-6 py-4">
+                    <span class="text-8xl font-black text-gray-900 tracking-tighter">0.5</span>
+                </div>
+
+                <p class="text-sm mb-4 text-gray-700 flex items-center justify-center">
+                    <span class="text-gray-500 mr-2">Daily Earn:</span>
+                    <i data-lucide="dollar-sign" class="w-4 h-4 text-green-600"></i>
+                    <span class="font-bold text-green-600 ml-0.5">$0.028</span>
+                    <button onclick="navigateTo('dailyEarningHistoryView')" class="text-xs text-gray-500 ml-3 hover:text-gray-700 flex items-center bg-gray-100 rounded-full px-2 py-1 shadow-inner">
+                        <i data-lucide="history" class="w-4 h-4 text-gray-400 mr-1"></i> History
+                    </button>
+                </p>
+
+                <div class="flex justify-center mb-8">
+                    <div id="settlement-timer" class="bg-purple-50 text-purple-700 font-bold rounded-full px-5 py-2 text-md shadow-inner border border-purple-200">
+                        Settlement time: 00h 00m 00s
                     </div>
                 </div>
+
+                <div class="flex space-x-4 justify-center">
+                    <button onclick="navigateTo('buyTPView')" class="green-gradient-button flex-1 py-4 px-6 rounded-xl text-white font-extrabold text-lg flex items-center justify-center max-w-[200px]">
+                        <i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Buy TP
+                    </button>
+                    <button onclick="navigateTo('referEarnView')" class="pink-gradient-button flex-1 py-4 px-6 rounded-xl text-white font-extrabold text-lg flex items-center justify-center max-w-[200px]">
+                        <span class="text-yellow-300 text-2xl font-black mr-1">$10</span> Refer & Earn
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 pt-10 rounded-3xl shadow-2xl mt-6 relative overflow-hidden border border-gray-100">
+                <div class="hot-badge shadow-lg">HOT</div>
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Return on Investment in AiEarn</h2>
                 
-                <div class="branch-container">
-                    <div class="branch-h-line"></div>
-                    <div class="node-container">
-                        <div class="line"></div>
-                        <?php echo render_node($treeData['L1_B']['L2'][0]); ?>
-                    </div>
-                    <div class="node-container">
-                        <div class="line"></div>
-                        <?php echo render_node($treeData['L1_B']['L2'][1]); ?>
-                    </div>
+                <table class="w-full text-left border-collapse rounded-lg overflow-hidden">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-4 roi-table-header text-sm font-bold text-gray-700">TP Purchased (USDT)</th>
+                            <th class="py-3 px-4 roi-table-header text-sm font-bold text-gray-700 text-right">Daily Return Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-3 px-4 text-gray-600 font-medium">≥ $0</td>
+                            <td class="py-3 px-4 text-right font-semibold text-green-500" data-rate="0.055">5.5%</td>
+                        </tr>
+                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                            <td class="py-3 px-4 text-gray-600 font-medium">≥ $20</td>
+                            <td class="py-3 px-4 text-right font-semibold text-green-500" data-rate="0.060">6%</td>
+                        </tr>
+                        <tr class="border-b border-gray-200 bg-red-50/70">
+                            <td class="py-4 px-4 text-gray-700 font-bold">
+                                ≥ $300 <span class="text-red-500 text-lg ml-1">🔥🔥🔥</span>
+                            </td>
+                            <td class="py-4 px-4 text-right font-extrabold text-green-700 text-lg" data-rate="0.065">6.5%</td>
+                        </tr>
+                        <tr class="bg-red-100/70">
+                            <td class="py-4 px-4 text-gray-700 font-bold">
+                                ≥ $3000-10000 <span class="text-red-600 text-lg ml-1">🔥</span>
+                            </td>
+                            <td class="py-4 px-4 text-right font-extrabold text-green-700 text-lg" data-rate="0.070">7%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex space-x-4 pt-4">
+                 <button onclick="navigateTo('aiTradingStatusView')" class="blue-gradient-button flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center shadow-lg">
+                    <i data-lucide="activity" class="w-4 h-4 mr-2"></i> AI Trading Status
+                </button>
+                <button onclick="navigateTo('myTradePowerView')" class="orange-gradient-button flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center shadow-lg">
+                    <i data-lucide="layers-3d" class="w-4 h-4 mr-2"></i> My Trade Power
+                </button>
+            </div>
+            
+        </section>
+
+        <section id="weekendEarnView" data-view="weekend-earn" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="zap" class="w-6 h-6 mr-2 text-yellow-500"></i> WEEKEND EARN FAST
+            </h2>
+            
+            <p class="text-lg font-bold text-gray-700 mb-4 bg-yellow-100 p-3 rounded-lg border-l-4 border-yellow-500">
+                ⚡ Earn 30% in 48 Hours! (Fixed Rate)
+            </p>
+
+            <button onclick="navigateTo('weekendEarnHistoryView')" class="w-full text-sm font-semibold text-blue-600 hover:text-blue-800 mb-6 flex items-center justify-center py-2 bg-blue-50 rounded-lg shadow-inner">
+                <i data-lucide="history" class="w-4 h-4 mr-2"></i> View Weekend Earn History (इतिहास देखें)
+            </button>
+
+
+            <p id="weekendRestrictionText" class="text-gray-600 mb-6">Invest for a short-term, high-return opportunity. (Minimum 100 USDT, **Once per week**)</p>
+
+            <div class="mb-8">
+                <label for="weekendAmount" class="block text-sm font-semibold text-gray-700 mb-2">Investment Amount (USDT)</label>
+                <div class="relative rounded-xl shadow-inner border border-gray-200">
+                    <input type="number" id="weekendAmount" placeholder="Min. 100 USDT" 
+                           min="100" step="0.01" value=""
+                           oninput="calculateWeekendReturn(this.value)"
+                           class="input-usdt w-full p-4 pr-16 text-2xl font-bold text-gray-900 border-none bg-transparent focus:ring-yellow-500 focus:border-yellow-500 rounded-xl"
+                           required>
+                    <span class="absolute right-0 top-0 bottom-0 flex items-center pr-4 text-xl font-extrabold text-yellow-600">USDT</span>
                 </div>
             </div>
-        </div>
+
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-xl mb-8 shadow-inner">
+                <p class="text-sm font-medium text-yellow-700 flex items-center mb-1">
+                    <i data-lucide="trending-up" class="w-4 h-4 mr-2"></i> Total Return Rate:
+                    <span id="weekendRateDisplay" class="font-extrabold text-yellow-800 ml-1">30%</span>
+                </p>
+                <p class="text-lg font-bold text-yellow-900 flex items-center">
+                    <i data-lucide="gem" class="w-5 h-5 mr-2"></i> Est. 48h Earnings: 
+                    <span id="weekendReturnAmount" class="ml-1 text-2xl">0.00 USDT</span>
+                </p>
+            </div>
+
+            <button onclick="simulateWeekendGateway()" id="weekendBuyButton" disabled
+                    class="w-full orange-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg opacity-50 cursor-not-allowed">
+                <i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (Min 100 USDT)
+            </button>
+        </section>
+
+        <section id="weekendEarnHistoryView" data-view="weekend-earn-history" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="history" class="w-6 h-6 mr-2 text-yellow-500"></i> Weekend Earn History (इतिहास)
+            </h2>
+            <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
+                <table class="min-w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time (दिनांक/समय)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Invested (निवेश)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Return (वापसी)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weekendEarnHistoryBody">
+                        </tbody>
+                </table>
+            </div>
+            <div id="weekendEarnHistoryPagination" class="flex justify-center items-center mt-6"></div>
+        </section>
         
+        <section id="buyTPView" data-view="buy-tp" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="wallet" class="w-6 h-6 mr-2 text-green-500"></i> TP Investment Portal
+            </h2>
+            
+            <button onclick="navigateTo('buyTPHistoryView')" class="w-full text-sm font-semibold text-blue-600 hover:text-blue-800 mb-6 flex items-center justify-center py-2 bg-blue-50 rounded-lg shadow-inner">
+                <i data-lucide="layers" class="w-4 h-4 mr-2"></i> View TP Purchase History (खरीद इतिहास)
+            </button>
+
+
+            <p class="text-gray-600 mb-6">Deposit USDT to increase your Trade Power and maximize your Daily ROI.</p>
+
+            <div class="mb-8">
+                <label for="usdtAmount" class="block text-sm font-semibold text-gray-700 mb-2">Investment Amount (USDT)</label>
+                <div class="relative rounded-xl shadow-inner border border-gray-200">
+                    <input type="number" id="usdtAmount" placeholder="Min. 10 USDT" 
+                           min="10" step="0.01" value=""
+                           oninput="calculateReturn(this.value)"
+                           class="input-usdt w-full p-4 pr-16 text-2xl font-bold text-gray-900 border-none bg-transparent focus:ring-green-500 focus:border-green-500 rounded-xl"
+                           required>
+                    <span class="absolute right-0 top-0 bottom-0 flex items-center pr-4 text-xl font-extrabold text-green-600">USDT</span>
+                </div>
+            </div>
+
+            <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-xl mb-8 shadow-inner">
+                <p class="text-sm font-medium text-green-700 flex items-center mb-1">
+                    <i data-lucide="zap" class="w-4 h-4 mr-2"></i> Your Daily Return Rate:
+                    <span id="dailyRateDisplay" class="font-extrabold text-green-800 ml-1">0%</span>
+                </p>
+                <p class="text-lg font-bold text-green-900 flex items-center">
+                    <i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Est. Daily Earnings: 
+                    <span id="dailyReturnAmount" class="ml-1 text-2xl">0.00 USDT</span>
+                </p>
+            </div>
+
+            <button onclick="simulateGateway()" id="buyNowButton" disabled
+                    class="w-full green-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg opacity-50 cursor-not-allowed">
+                <i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Min 10 USDT)
+            </button>
+        </section>
+        
+        <section id="buyTPHistoryView" data-view="buy-tp-history" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="layers" class="w-6 h-6 mr-2 text-green-500"></i> TP Purchase History (खरीद इतिहास)
+            </h2>
+            <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
+                <table class="min-w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time (दिनांक/समय)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Amount (रकम)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Daily $\$$ Earning (दैनिक कमाई)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="buyTPHistoryBody">
+                        </tbody>
+                </table>
+            </div>
+            <div id="buyTPHistoryPagination" class="flex justify-center items-center mt-6"></div>
+        </section>
+        
+        <section id="referEarnView" data-view="refer-earn" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="users" class="w-6 h-6 mr-2 text-pink-500"></i> Elite Referral Program (रेफ़र करें और कमाएँ)
+            </h2>
+            <div class="bg-pink-50 border-l-4 border-pink-500 p-4 rounded-xl mb-6 shadow-inner">
+                <p class="text-sm font-semibold text-pink-700 mb-1">Total Referral Earnings (कुल रेफ़रल कमाई):</p>
+                <span class="text-4xl font-extrabold text-pink-600">$1,335.00</span>
+                <p class="text-xs text-gray-500 mt-2">Earn up to 10 Levels deep. (10 लेवल तक कमाएँ)</p>
+            </div>
+
+            <div class="mb-8">
+                <label for="referralLink" class="block text-sm font-semibold text-gray-700 mb-2">Your Invitation Link (आपका निमंत्रण लिंक)</label>
+                <div class="flex">
+                    <input type="text" id="referralLink" value="https://ai.earn/invite/mock-user-12345" readonly
+                           class="flex-1 p-3 border border-gray-300 rounded-l-xl text-gray-600 bg-gray-50 text-sm truncate">
+                    <button onclick="copyReferralLink()" class="pink-gradient-button text-white px-4 rounded-r-xl font-bold text-sm flex items-center">
+                        <i data-lucide="copy" class="w-4 h-4 mr-2"></i> Copy
+                    </button>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                 <i data-lucide="award" class="w-5 h-5 mr-2 text-yellow-500"></i> Level Structure (लेवल संरचना)
+            </h3>
+            <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
+                <table class="min-w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Level</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Users (उपयोगकर्ता)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Deposited (जमा)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Earned (कमाई)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="referralTableBody">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="levelUsersView" data-view="level-users" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 id="levelUsersTitle" class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level X (लेवल X के उपयोगकर्ता)
+            </h2>
+            <p class="text-gray-600 mb-6 text-sm">Details of users and their initial investment (deposit) in this level. (इस लेवल में उपयोगकर्ताओं और उनके निवेश का विवरण)</p>
+            
+            <div id="levelUsersList" class="space-y-4">
+                </div>
+        </section>
+
+        <section id="aiTradingStatusView" data-view="ai-trading-status" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="activity" class="w-6 h-6 mr-2 text-blue-500"></i> AI Trading Status (ट्रेडिंग रिपोर्ट)
+            </h2>
+            <p class="text-gray-600 mb-4 text-sm font-semibold">Live trades executed by the AI on Forex pairs. (Last 10 Entries)</p>
+            
+            <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
+                <table class="min-w-full text-left border-collapse">
+                    <thead class="bg-gray-800 sticky top-0">
+                        <tr>
+                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th">Pair/Side</th>
+                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th">Leverage</th>
+                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th text-right">Entry/Exit Price</th>
+                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th text-right">% Profit</th>
+                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th">Time (UTC)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="aiTradingHistoryBody">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="myTradePowerView" data-view="my-trade-power" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="layers-3d" class="w-6 h-6 mr-2 text-orange-500"></i> My Trade Power (मेरी TP)
+            </h2>
+            <p class="text-gray-600 mb-6 text-sm">All your active TP packages with a 20-day validity status.</p>
+
+            <div id="myTPPackagesList" class="space-y-6">
+                </div>
+        </section>
+        
+        <section id="introductionView" data-view="introduction" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="info" class="w-6 h-6 mr-2 text-blue-500"></i> AiEarn: Company Profile
+            </h2>
+            
+            <div class="space-y-6">
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-xl shadow-inner">
+                    <h3 class="text-xl font-bold text-blue-800 mb-2 flex items-center">
+                         <i data-lucide="brain" class="w-5 h-5 mr-2"></i> Our Vision
+                    </h3>
+                    <p class="text-gray-700">AiEarn is dedicated to pioneering AI-driven quantitative trading on major financial markets. We leverage advanced machine learning models (Quantum AI Engine) to identify high-probability trade setups, ensuring consistent and stable returns for our global investor community. Our mission is to democratize high-frequency trading through transparent and accessible technology.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-gray-50 rounded-xl shadow-md border border-gray-100">
+                        <i data-lucide="shield-check" class="w-6 h-6 text-green-600 mb-2"></i>
+                        <p class="font-bold text-gray-800 text-sm">Security & Compliance</p>
+                        <p class="text-xs text-gray-600">Regulated operation with segregated funds protection.</p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-xl shadow-md border border-gray-100">
+                        <i data-lucide="trending-up" class="w-6 h-6 text-purple-600 mb-2"></i>
+                        <p class="font-bold text-gray-800 text-sm">High-Frequency Execution</p>
+                        <p class="text-xs text-gray-600">Millions of trades executed daily with ultra-low latency.</p>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-gray-800 pt-4 border-t mt-6 flex items-center">
+                    <i data-lucide="file-text" class="w-5 h-5 mr-2 text-red-500"></i> Regulatory Documents
+                </h3>
+                <p class="text-gray-600 text-sm mb-4">View our official registration and compliance certificates.</p>
+
+                <div class="space-y-3">
+                    <a href="javascript:void(0)" onclick="showMessage('Document View', 'Viewing: Financial Regulator License (Mock Document)')" class="flex items-center p-4 bg-red-50 border border-red-200 rounded-xl shadow hover:shadow-lg transition">
+                        <i data-lucide="file-badge" class="w-8 h-8 mr-4 text-red-600"></i>
+                        <div>
+                            <p class="font-bold text-red-800">Global Financial Regulator License</p>
+                            <p class="text-sm text-gray-600">License ID: GF-2025-A12X | Valid till: 2030</p>
+                        </div>
+                        <i data-lucide="eye" class="w-5 h-5 ml-auto text-red-500"></i>
+                    </a>
+                    <a href="javascript:void(0)" onclick="showMessage('Document View', 'Viewing: Certificate of Incorporation (Mock Document)')" class="flex items-center p-4 bg-green-50 border border-green-200 rounded-xl shadow hover:shadow-lg transition">
+                        <i data-lucide="file-check" class="w-8 h-8 mr-4 text-green-600"></i>
+                        <div>
+                            <p class="font-bold text-green-800">Certificate of Incorporation</p>
+                            <p class="text-sm text-gray-600">Registration No: AI-INC-98765 | Date: 2022-05-15</p>
+                        </div>
+                        <i data-lucide="eye" class="w-5 h-5 ml-auto text-green-500"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="withdrawalView" data-view="withdrawal" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="arrow-down-left" class="w-6 h-6 mr-2 text-orange-500"></i> Request Withdrawal (निकासी अनुरोध)
+            </h2>
+
+            <div class="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-xl shadow-inner">
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-sm font-semibold text-orange-700">Your User ID:</p>
+                    <span class="font-bold text-orange-900 bg-orange-100 px-3 py-1 rounded-full text-sm">USER123456</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <p class="text-lg font-semibold text-orange-700">Available Balance:</p>
+                    <span class="text-3xl font-extrabold text-orange-600">450.75 USDT</span>
+                </div>
+            </div>
+
+            <button onclick="reinvestAllBalance()" id="reinvestButton" class="w-full green-gradient-button py-3 rounded-xl text-white font-extrabold text-sm mb-6 flex items-center justify-center shadow-lg">
+                <i data-lucide="layers-3d" class="w-4 h-4 mr-2"></i> Re-invest All Balance to TP (ऑटो-इन्वेस्ट)
+            </button>
+            
+            <div class="mb-6">
+                <label for="walletAddress" class="block text-sm font-semibold text-gray-700 mb-2">Your USDT Wallet Address (BEP20)</label>
+                <div class="flex">
+                    <input type="text" id="walletAddress" placeholder="Enter or paste your wallet address" value="0xMockAddress123..."
+                           class="flex-1 p-3 border border-gray-300 rounded-l-xl text-gray-600 bg-gray-50 text-sm truncate focus:ring-blue-500 focus:border-blue-500">
+                    <button onclick="showMessage('Wallet Save', 'Wallet address saved successfully!')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-r-xl font-bold text-sm flex items-center">
+                        <i data-lucide="save" class="w-4 h-4 mr-2"></i> Save
+                    </button>
+                </div>
+                <p class="text-xs text-red-500 mt-1">Ensure this is a correct BEP20 network address.</p>
+            </div>
+
+            <div class="mb-8">
+                <label for="withdrawalAmount" class="block text-sm font-semibold text-gray-700 mb-2">Amount to Withdraw (USDT)</label>
+                <div class="relative rounded-xl shadow-inner border border-gray-200">
+                    <input type="number" id="withdrawalAmount" placeholder="Min. 20 USDT" 
+                           min="20" step="0.01" value=""
+                           class="input-usdt w-full p-4 pr-16 text-2xl font-bold text-gray-900 border-none bg-transparent focus:ring-orange-500 focus:border-orange-500 rounded-xl"
+                           required>
+                    <span class="absolute right-0 top-0 bottom-0 flex items-center pr-4 text-xl font-extrabold text-orange-600">USDT</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Transaction Fee: 5 USDT</p>
+            </div>
+
+            <button onclick="simulateWithdrawal()" class="w-full orange-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg">
+                <i data-lucide="send" class="w-5 h-5 mr-2 inline-block"></i> Submit Withdrawal
+            </button>
+
+            <h3 class="text-xl font-bold text-gray-800 pt-8 flex items-center mb-4 border-t mt-8">
+                <i data-lucide="clock-history" class="w-5 h-5 mr-2 text-gray-500"></i> Withdrawal History (निकासी इतिहास)
+            </h3>
+
+            <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
+                <table class="min-w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Amount (रकम)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Wallet/Date (वॉलेट/दिनांक)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Status/Txn Hash (स्थिति/हैश)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="withdrawalHistoryBody">
+                        </tbody>
+                </table>
+            </div>
+            <div id="withdrawalHistoryPagination" class="flex justify-center items-center mt-6"></div>
+        </section>
+
+        <section id="dailyEarningHistoryView" data-view="daily-earning-history" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
+                <i data-lucide="dollar-sign" class="w-6 h-6 mr-2 text-green-500"></i> Daily Earning Report (दैनिक कमाई रिपोर्ट)
+            </h2>
+            <p class="text-gray-600 mb-4">View your daily passive earnings generated by your TP (Trade Power).</p>
+            <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
+                <table class="min-w-full text-left border-collapse">
+                    <thead class="bg-gray-100 sticky top-0">
+                        <tr>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date (दिनांक)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Earning (कमाई)</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">TP Rate (दर)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dailyEarningHistoryBody">
+                        </tbody>
+                </table>
+            </div>
+            <div id="dailyEarningHistoryPagination" class="flex justify-center items-center mt-6"></div>
+        </section>
+
+
     </div>
 
+    <footer id="footer" class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-30 shadow-2xl">
+        <div class="max-w-lg mx-auto flex justify-around items-center p-3">
+            <button onclick="navigateTo('dashboardView')" class="flex flex-col items-center text-green-600 font-bold text-xs p-1">
+                <i data-lucide="rocket" class="w-6 h-6 mb-1"></i>
+                <span class="text-xs">AiEarn</span>
+            </button>
+            <button onclick="navigateTo('referEarnView')" class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
+                <i data-lucide="users" class="w-6 h-6 mb-1"></i>
+                <span class="text-xs">Refer & Earn</span>
+            </button>
+            <button onclick="navigateTo('introductionView')" class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
+                <i data-lucide="info" class="w-6 h-6 mb-1"></i>
+                <span class="text-xs">Introduction</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
+                <i data-lucide="bar-chart-3" class="w-6 h-6 mb-1"></i>
+                <span class="text-xs">Stats</span>
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // --- Global State and View Management ---
+        let currentPage = 'dashboardView';
+        const headerElement = document.getElementById('header');
+        
+        // --- Mock State for Weekly Limit (NEW) ---
+        // True agar user ne is hafte weekend offer mein invest kar diya hai.
+        let hasInvestedThisWeek = false; 
+        
+        // --- View Mappings ---
+        const views = {
+            dashboardView: document.getElementById('dashboardView'),
+            weekendEarnView: document.getElementById('weekendEarnView'), // NEW
+            weekendEarnHistoryView: document.getElementById('weekendEarnHistoryView'), // NEW
+            buyTPView: document.getElementById('buyTPView'),
+            referEarnView: document.getElementById('referEarnView'),
+            levelUsersView: document.getElementById('levelUsersView'),
+            withdrawalView: document.getElementById('withdrawalView'),
+            buyTPHistoryView: document.getElementById('buyTPHistoryView'), 
+            dailyEarningHistoryView: document.getElementById('dailyEarningHistoryView'),
+            aiTradingStatusView: document.getElementById('aiTradingStatusView'),
+            myTradePowerView: document.getElementById('myTradePowerView'),
+            introductionView: document.getElementById('introductionView'), // New
+        };
+        const viewTitles = {
+            dashboardView: 'AiEarn',
+            weekendEarnView: 'Weekend Earn Fast', // NEW
+            weekendEarnHistoryView: 'Weekend Earn History', // NEW
+            buyTPView: 'TP Investment Portal',
+            referEarnView: 'Elite Referral Program',
+            levelUsersView: 'Level User Details',
+            withdrawalView: 'Withdrawal Portal',
+            buyTPHistoryView: 'TP Purchase History', 
+            dailyEarningHistoryView: 'Daily Earning Report',
+            aiTradingStatusView: 'AI Trading Status',
+            myTradePowerView: 'My Trade Power',
+            introductionView: 'Company Profile', // New
+        };
+        
+        // --- History & Pagination State ---
+        const ITEMS_PER_PAGE = 10;
+        let withdrawalPage = 1;
+        let buyTPPage = 1;
+        let dailyEarningPage = 1;
+        let weekendEarnPage = 1; // NEW
+        
+        // --- Mock Data ---
+        const MOCK_AVAILABLE_BALANCE = 450.75; // in USDT
+
+        // Helper function to generate mock data
+        function generateMockData(count, generatorFn) {
+            return Array.from({ length: count }, (_, i) => generatorFn(i + 1));
+        }
+        
+        // ROI Tiers
+        const roiTiers = [
+            { threshold: 3000, rate: 0.070, label: '7.0%' },
+            { threshold: 300, rate: 0.065, label: '6.5%' },
+            { threshold: 20, rate: 0.060, label: '6.0%' },
+            { threshold: 0, rate: 0.055, label: '5.5%' }
+        ];
+
+        function getRoiDetails(amount) {
+            const tier = roiTiers.find(t => amount >= t.threshold) || roiTiers[roiTiers.length - 1];
+            return {
+                rate: tier.rate,
+                label: tier.label,
+                dailyEarning: (amount * tier.rate).toFixed(4)
+            };
+        }
+
+        // MOCK DATA FOR NEW VIEWS
+        
+        // Mock AI Trading History (10 entries for cleaner view)
+        const mockAITradingHistory = [
+            { pair: 'EUR/USD', position: 'Long', leverage: '50X', entry: 1.0725, execute: 1.0730, profit: 0.45, time: '2025-11-12 10:05:30Z' },
+            { pair: 'USD/JPY', position: 'Short', leverage: '100X', entry: 151.12, execute: 150.98, profit: 1.20, time: '2025-11-12 09:55:00Z' },
+            { pair: 'GBP/USD', position: 'Long', leverage: '75X', entry: 1.2450, execute: 1.2458, profit: 0.65, time: '2025-11-12 09:30:15Z' },
+            { pair: 'AUD/NZD', position: 'Short', leverage: '20X', entry: 1.0900, execute: 1.0915, profit: -0.22, time: '2025-11-12 08:50:40Z' },
+            { pair: 'EUR/GBP', position: 'Long', leverage: '50X', entry: 0.8550, execute: 0.8560, profit: 0.80, time: '2025-11-12 08:15:00Z' },
+            { pair: 'USD/CAD', position: 'Short', leverage: '100X', entry: 1.3505, execute: 1.3500, profit: 0.35, time: '2025-11-12 07:40:20Z' },
+            { pair: 'XAU/USD', position: 'Long', leverage: '20X', entry: 2350.50, execute: 2355.80, profit: 0.55, time: '2025-11-12 07:10:00Z' },
+            { pair: 'CAD/JPY', position: 'Short', leverage: '75X', entry: 110.10, execute: 110.25, profit: -0.15, time: '2025-11-12 06:30:55Z' },
+            { pair: 'NZD/USD', position: 'Long', leverage: '50X', entry: 0.6150, execute: 0.6155, profit: 0.40, time: '2025-11-12 05:45:10Z' },
+            { pair: 'CHF/JPY', position: 'Long', leverage: '100X', entry: 168.05, execute: 168.15, profit: 0.75, time: '2025-11-12 05:00:00Z' },
+        ].slice(0, 10); // Ensure only 10 entries are displayed
+
+        // Mock User TP Packages
+        const mockUserTPPackages = [
+            { id: 101, amount: 50, activeDate: '2025-11-08', daysTotal: 20, activeDays: 5, dailyEarning: 0.055 },
+            { id: 102, amount: 350, activeDate: '2025-11-01', daysTotal: 20, activeDays: 12, dailyEarning: 0.065 },
+            { id: 103, amount: 1500, activeDate: '2025-10-25', daysTotal: 20, activeDays: 19, dailyEarning: 0.065 },
+            { id: 104, amount: 20, activeDate: '2025-10-20', daysTotal: 20, activeDays: 23, dailyEarning: 0.060 }, // Expired
+        ];
+
+        // 25 Mock Withdrawal Entries
+        const mockWithdrawalHistory = generateMockData(25, (i) => ({
+            id: i,
+            amount: Math.floor(Math.random() * 200) + 20.99,
+            wallet: `0xMockAddr${String(i).padStart(4, '0')}...`,
+            date: `2025-11-${String(30 - Math.floor(i / 2)).padStart(2, '0')} ${String(10 + i % 10).padStart(2, '0')}:00`,
+            txnHash: i % 3 === 0 ? 'Pending...' : `0xABCDEF${String(1000 + i)}...`,
+            status: i % 3 === 0 ? 'Processing' : 'Completed'
+        })).sort((a, b) => b.id - a.id);
+        
+        // 25 Mock Buy TP History Entries
+        const mockBuyTPHistory = generateMockData(25, (i) => {
+            const amount = [50, 100, 300, 500, 1000, 3500, 50][i % 7] + (Math.floor(Math.random() * 10) + 1);
+            const roi = getRoiDetails(amount);
+            return {
+                id: i,
+                amount: amount,
+                date: `2025-10-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`,
+                ...roi
+            };
+        }).sort((a, b) => b.id - a.id);
+        
+        // 25 Mock Daily Earning Entries
+        const mockDailyEarningHistory = generateMockData(25, (i) => ({
+            id: i,
+            date: `2025-11-${String(30 - i).padStart(2, '0')}`,
+            amount: (0.02 + Math.random() * 0.05).toFixed(4),
+            rate: (5.5 + Math.random() * 0.5).toFixed(2) + '%'
+        })).sort((a, b) => b.id - a.id);
+
+        const mockReferralData = [
+            { level: 1, users: 12, deposited: 5200, earnings: 52.00, usersDetail: [{ name: 'Aman S. (ID: 001)', deposit: 500, datetime: '2025-10-01 10:30' }, { name: 'Priya K. (ID: 002)', deposit: 1000, datetime: '2025-10-02 15:45' }, { name: 'Rahul M. (ID: 003)', deposit: 20, datetime: '2025-10-03 08:00' }, { name: 'Neha B. (ID: 004)', deposit: 3000, datetime: '2025-10-04 12:12' }] },
+            { level: 2, users: 45, deposited: 8500, earnings: 85.00, usersDetail: [{ name: 'Jai D. (ID: 101)', deposit: 1500, datetime: '2025-10-05 18:20' }, { name: 'Kiran N. (ID: 102)', deposit: 50, datetime: '2025-10-06 09:30' }] },
+            { level: 3, users: 150, deposited: 12000, earnings: 120.00, usersDetail: [] },
+            { level: 4, users: 300, deposited: 9800, earnings: 98.00, usersDetail: [] },
+            { level: 5, users: 450, deposited: 15000, earnings: 150.00, usersDetail: [] },
+            { level: 6, users: 520, deposited: 11000, earnings: 110.00, usersDetail: [] },
+            { level: 7, users: 600, deposited: 18000, earnings: 180.00, usersDetail: [] },
+            { level: 8, users: 750, deposited: 22000, earnings: 220.00, usersDetail: [] },
+            { level: 9, users: 800, deposited: 16500, earnings: 165.00, usersDetail: [] },
+            { level: 10, users: 950, deposited: 25000, earnings: 250.00, usersDetail: [] },
+        ];
+        
+        // NEW: 25 Mock Weekend Earn Entries
+        const mockWeekendEarnHistory = generateMockData(25, (i) => {
+            const amount = 100 + Math.floor(Math.random() * 900); // 100 to 1000 USDT
+            const returnAmount = amount * 0.30;
+            const status = i % 5 < 3 ? 'Completed' : 'Processing';
+            return {
+                id: i,
+                amount: amount,
+                date: `2025-11-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`,
+                returnAmount: returnAmount,
+                status: status
+            };
+        }).sort((a, b) => b.id - a.id);
+
+
+        // --- Pagination Logic (Reusable) ---
+
+        function renderPaginationControls(totalItems, itemsPerPage, currentPage, targetViewId, paginationContainerId, setPageFn) {
+            const container = document.getElementById(paginationContainerId);
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            container.innerHTML = '';
+            
+            if (totalPages <= 1) return;
+
+            const maxButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+            if (endPage - startPage + 1 < maxButtons) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            // Previous Button
+            let prevButton = document.createElement('button');
+            prevButton.className = 'pagination-button bg-gray-200 text-gray-700';
+            prevButton.disabled = currentPage === 1;
+            prevButton.innerHTML = '<i data-lucide="chevron-left" class="w-4 h-4"></i>';
+            prevButton.onclick = () => {
+                setPageFn(currentPage - 1);
+                navigateTo(targetViewId);
+            };
+            container.appendChild(prevButton);
+
+            // Page Number Buttons
+            for (let i = startPage; i <= endPage; i++) {
+                let button = document.createElement('button');
+                button.className = `pagination-button ${i === currentPage ? 'active' : 'bg-gray-200 text-gray-700'}`;
+                button.textContent = i;
+                button.onclick = () => {
+                    setPageFn(i);
+                    navigateTo(targetViewId);
+                };
+                container.appendChild(button);
+            }
+
+            // Next Button
+            let nextButton = document.createElement('button');
+            nextButton.className = 'pagination-button bg-gray-200 text-gray-700';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.innerHTML = '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
+            nextButton.onclick = () => {
+                setPageFn(currentPage + 1);
+                navigateTo(targetViewId);
+            };
+            container.appendChild(nextButton);
+            
+            lucide.createIcons();
+        }
+
+        function renderPaginatedHistory(data, tableBodyId, currentPage, itemsPerPage, renderRowFn, paginationContainerId, viewId, setPageFn) {
+            const body = document.getElementById(tableBodyId);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = data.slice(startIndex, endIndex);
+
+            let html = '';
+            if (pageData.length === 0) {
+                const colSpan = tableBodyId === 'withdrawalHistoryBody' ? 3 : 4;
+                html = `<tr><td colspan="${colSpan}" class="py-4 text-center text-gray-500">No history found on this page. (इस पेज पर कोई इतिहास नहीं मिला)</td></tr>`;
+            } else {
+                html = pageData.map(renderRowFn).join('');
+            }
+            body.innerHTML = html;
+
+            renderPaginationControls(data.length, itemsPerPage, currentPage, viewId, paginationContainerId, setPageFn);
+            
+            lucide.createIcons();
+        }
+
+        // --- Row Renderer Functions ---
+
+        function renderWithdrawalRow(item) {
+            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
+            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
+            
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm font-bold text-gray-800">$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-xs text-gray-600">
+                        <span class="block truncate w-24">${item.wallet}</span>
+                        <span class="text-gray-400 block">${item.date.split(' ')[0]}</span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-right">
+                        <span class="font-semibold ${statusColor} flex items-center justify-end">
+                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
+                        </span>
+                        <span class="block text-gray-400 text-[10px] truncate w-24 ml-auto">${item.txnHash}</span>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderBuyTPRow(item) {
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-gray-800 text-right">$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-xs text-right">
+                        <span class="font-bold text-green-600">$${item.dailyEarning}</span>
+                        <span class="block text-gray-400 text-[10px]">(${item.label})</span>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderDailyEarningRow(item) {
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">$${item.amount}</td>
+                    <td class="py-3 px-4 text-xs text-right text-gray-700">${item.rate}</td>
+                </tr>
+            `;
+        }
+        
+        function renderWeekendEarnRow(item) {
+            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
+            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
+            const totalReturn = item.amount + item.returnAmount;
+
+            return `
+                <tr class="border-b border-gray-100 hover:bg-yellow-50">
+                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date.split(' ')[0]}<span class="block text-gray-400 text-[10px]">${item.date.split(' ')[1]}</span></td>
+                    <td class="py-3 px-4 text-sm font-bold text-yellow-800 text-right">$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-xs text-right">
+                        <span class="font-bold text-green-600">$${item.returnAmount.toFixed(2)}</span>
+                        <span class="block text-gray-400 text-[10px]">Total: $${totalReturn.toFixed(2)}</span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-center">
+                        <span class="font-semibold ${statusColor} flex items-center justify-center">
+                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        // --- View Specific Renderer Functions (called by navigateTo) ---
+
+        function renderWithdrawalHistory(page) {
+            if (page) withdrawalPage = page;
+            renderPaginatedHistory(
+                mockWithdrawalHistory, 
+                'withdrawalHistoryBody', 
+                withdrawalPage, 
+                ITEMS_PER_PAGE, 
+                renderWithdrawalRow, 
+                'withdrawalHistoryPagination', 
+                'withdrawalView', 
+                (p) => withdrawalPage = p // Setter
+            );
+        }
+        
+        function renderBuyTPHistory(page) {
+            if (page) buyTPPage = page;
+            renderPaginatedHistory(
+                mockBuyTPHistory, 
+                'buyTPHistoryBody', 
+                buyTPPage, 
+                ITEMS_PER_PAGE, 
+                renderBuyTPRow, 
+                'buyTPHistoryPagination', 
+                'buyTPHistoryView', 
+                (p) => buyTPPage = p // Setter
+            );
+        }
+
+        function renderDailyEarningHistory(page) {
+            if (page) dailyEarningPage = page;
+            renderPaginatedHistory(
+                mockDailyEarningHistory, 
+                'dailyEarningHistoryBody', 
+                dailyEarningPage, 
+                ITEMS_PER_PAGE, 
+                renderDailyEarningRow, 
+                'dailyEarningHistoryPagination', 
+                'dailyEarningHistoryView', 
+                (p) => dailyEarningPage = p // Setter
+            );
+        }
+        
+        function renderWeekendEarnHistory(page) {
+            if (page) weekendEarnPage = page;
+            renderPaginatedHistory(
+                mockWeekendEarnHistory, 
+                'weekendEarnHistoryBody', 
+                weekendEarnPage, 
+                ITEMS_PER_PAGE, 
+                renderWeekendEarnRow, 
+                'weekendEarnHistoryPagination', 
+                'weekendEarnHistoryView', 
+                (p) => weekendEarnPage = p // Setter
+            );
+        }
+
+        function renderAITradingStatus() {
+            const body = document.getElementById('aiTradingHistoryBody');
+            let html = mockAITradingHistory.map(item => {
+                const isProfit = item.profit >= 0;
+                const profitColor = isProfit ? 'text-green-500 bg-green-50' : 'text-red-500 bg-red-50';
+                const positionColor = item.position === 'Long' ? 'text-green-500' : 'text-red-500';
+
+                return `
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-3 px-2 text-xs font-bold text-gray-700">
+                            ${item.pair} <span class="font-medium ${positionColor} block text-[10px]">${item.position}</span>
+                        </td>
+                        <td class="py-3 px-2 text-xs font-semibold text-gray-600">${item.leverage}</td>
+                        <td class="py-3 px-2 text-xs text-right">
+                            <span class="block font-bold text-gray-800">${item.entry.toFixed(4)}</span>
+                            <span class="block text-gray-400 text-[10px]">${item.execute.toFixed(4)}</span>
+                        </td>
+                        <td class="py-3 px-2 text-xs text-right">
+                            <span class="font-extrabold ${profitColor} p-1 rounded-md inline-block">
+                                ${isProfit ? '+' : ''}${item.profit.toFixed(2)}%
+                            </span>
+                        </td>
+                        <td class="py-3 px-2 text-xs text-gray-500 w-16">${item.time.split(' ')[1].slice(0, 5)}</td>
+                    </tr>
+                `;
+            }).join('');
+            body.innerHTML = html;
+        }
+
+        function renderMyTradePower() {
+            const list = document.getElementById('myTPPackagesList');
+            let html = mockUserTPPackages.map(item => {
+                const daysRemaining = item.daysTotal - item.activeDays;
+                const percentage = Math.min(100, (item.activeDays / item.daysTotal) * 100);
+                const progressColor = percentage < 75 ? 'bg-green-500' : 'bg-red-500';
+                const statusLabel = daysRemaining > 0 ? `${daysRemaining} Days Left` : 'Expired!';
+                const statusColor = daysRemaining > 0 ? 'text-green-600' : 'text-red-600';
+                const cardBorder = daysRemaining > 0 ? 'border-green-300' : 'border-red-300';
+                
+                // Calculate estimated daily return
+                const dailyReturn = (item.amount * item.dailyEarning).toFixed(4);
+
+                return `
+                    <div class="bg-white p-5 rounded-2xl shadow-xl border-t-8 ${cardBorder} space-y-3">
+                        <div class="flex justify-between items-center border-b pb-3">
+                            <h3 class="text-2xl font-extrabold text-gray-800">
+                                $${item.amount.toLocaleString()} <span class="text-sm font-medium text-gray-500">TP Package</span>
+                            </h3>
+                            <span class="font-bold text-lg ${statusColor} bg-gray-100 px-3 py-1 rounded-full">${statusLabel}</span>
+                        </div>
+                        
+                        <div class="flex justify-between text-sm font-medium">
+                            <div class="text-center">
+                                <p class="text-gray-500">Active Date</p>
+                                <p class="font-bold text-gray-700">${item.activeDate}</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-gray-500">Daily Earning</p>
+                                <p class="font-bold text-green-600">$${dailyReturn}</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-gray-500">Total Days</p>
+                                <p class="font-bold text-blue-600">${item.daysTotal} Days</p>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <p class="text-xs text-gray-600 mb-1 flex justify-between">
+                                <span class="font-bold">TP Active: ${item.activeDays} / ${item.daysTotal} Days</span>
+                                <span class="font-semibold">${percentage.toFixed(0)}% Complete</span>
+                            </p>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="h-2.5 rounded-full ${progressColor} transition-all duration-500" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (mockUserTPPackages.length === 0) {
+                 html = `<div class="text-center text-gray-500 p-8 bg-gray-50 rounded-lg shadow-inner">You have no active Trade Power packages. Please purchase TP.</div>`;
+            }
+
+            list.innerHTML = html;
+        }
+
+        // --- Weekly Investment Eligibility Check (NEW FUNCTION) ---
+        function checkWeekendEligibility() {
+            const minInvest = 100;
+            const dashboardButton = document.getElementById('weekendDashboardButton');
+            const weekendAmountInput = document.getElementById('weekendAmount');
+            const weekendBuyButton = document.getElementById('weekendBuyButton');
+            const restrictionText = document.getElementById('weekendRestrictionText');
+            
+            // 1. Dashboard Button Update
+            if (dashboardButton) {
+                if (hasInvestedThisWeek) {
+                    dashboardButton.textContent = 'RESTRICTED';
+                    dashboardButton.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+                    dashboardButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+                    dashboardButton.setAttribute('onclick', "showMessage('Investment Restricted', 'You have already utilized the WEEKEND EARN FAST offer this week. Please wait until next week.')");
+                } else {
+                    // Ensure default state is restored
+                    dashboardButton.textContent = 'LET\'S GO';
+                    dashboardButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    dashboardButton.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
+                    dashboardButton.setAttribute('onclick', "navigateTo('weekendEarnView')");
+                }
+            }
+            
+            // 2. Weekend Earn View Update
+            if (weekendAmountInput && restrictionText) {
+                if (hasInvestedThisWeek) {
+                    weekendAmountInput.setAttribute('disabled', 'true');
+                    weekendAmountInput.value = '';
+                    weekendAmountInput.placeholder = 'Already invested this week';
+                    
+                    weekendBuyButton.setAttribute('disabled', 'true');
+                    weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    weekendBuyButton.classList.remove('hover:opacity-95');
+                    weekendBuyButton.innerHTML = '<i data-lucide="x-circle" class="w-5 h-5 mr-2 inline-block"></i> Weekly Limit Reached';
+                    
+                    restrictionText.innerHTML = `<span class="font-bold text-red-500">🚫 Weekly Limit Reached:</span> You must wait until next week to invest again. (Minimum ${minInvest} USDT)`;
+
+                } else {
+                     weekendAmountInput.removeAttribute('disabled');
+                     weekendAmountInput.placeholder = `Min. ${minInvest} USDT`;
+                     restrictionText.innerHTML = `Invest for a short-term, high-return opportunity. (Minimum ${minInvest} USDT, **Once per week**)`;
+                     
+                     // Reset button/calculation state
+                     calculateWeekendReturn(weekendAmountInput.value); 
+                }
+                lucide.createIcons();
+            }
+        }
+
+
+        // --- General View Navigation and UI Management ---
+
+        function renderHeader(viewId) {
+            let title = viewTitles[viewId] || 'AiEarn';
+            let backButtonHtml = '';
+            
+            if (viewId !== 'dashboardView') {
+                // Determine the correct view to go back to
+                let backToView = 'dashboardView';
+                if (viewId === 'levelUsersView') {
+                    backToView = 'referEarnView'; // Go back to Refer & Earn from User List
+                } else if (viewId === 'buyTPHistoryView') {
+                    backToView = 'buyTPView'; // Go back to Buy TP form from History
+                } else if (viewId === 'weekendEarnHistoryView') { // NEW
+                    backToView = 'weekendEarnView'; // Go back to Weekend Earn form from History
+                }
+                // New: AI/My TP views go back to dashboard
+                
+                backButtonHtml = `
+                    <button onclick="navigateTo('${backToView}')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+                        <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                    </button>
+                `;
+            } else {
+                backButtonHtml = `
+                    <button onclick="console.log('Close')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                `;
+            }
+
+            headerElement.innerHTML = `
+                <div class="flex justify-between items-center max-w-lg mx-auto">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-3">
+                            ${backButtonHtml}
+                            <div class="flex items-center space-x-1">
+                                <div class="p-1 rounded-full bg-green-100">
+                                    <i data-lucide="rabbit" class="w-5 h-5 text-green-600"></i>
+                                </div>
+                                <span class="font-extrabold text-xl text-gray-900">${title}</span>
+                                <span class="text-gray-500 text-sm font-medium">(${viewId === 'dashboardView' ? 'Earning...' : 'View'})</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="console.log('More Options')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+                            <i data-lucide="chevron-down" class="w-6 h-6"></i>
+                        </button>
+                        <button onclick="console.log('Settings')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+                            <i data-lucide="more-vertical" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons(); // Re-render icons after updating HTML
+        }
+
+        function navigateTo(viewId, page = 1) {
+            // Hide current view only if it's not the first load
+            if (currentPage) {
+                const currentView = views[currentPage];
+                if (currentView) {
+                    currentView.classList.remove('view');
+                    currentView.classList.add('hidden-view');
+                }
+            }
+
+            // Show new view
+            const newView = views[viewId];
+            if (newView) {
+                newView.classList.remove('hidden-view');
+                newView.classList.add('view');
+            } else {
+                // Should not happen if all views are added correctly
+                console.error(`View ID not found: ${viewId}`);
+                return;
+            }
+
+            currentPage = viewId;
+            renderHeader(viewId);
+            
+            // --- Special initialization for specific views ---
+            if (viewId === 'dashboardView' || viewId === 'weekendEarnView') {
+                // IMPORTANT: Run the eligibility check whenever navigating to dashboard or the weekend form
+                checkWeekendEligibility();
+            }
+            
+            if (viewId === 'referEarnView') {
+                populateReferralTable();
+            } else if (viewId === 'weekendEarnHistoryView') { // NEW
+                renderWeekendEarnHistory(page);
+            } else if (viewId === 'withdrawalView') {
+                // IMPORTANT: Update balance display in case it was changed by reinvestAllBalance
+                const balanceSpan = document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600');
+                if (balanceSpan) {
+                    balanceSpan.textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+                }
+                // Also ensure the button is enabled for the next action (since MOCK_AVAILABLE_BALANCE is constant)
+                const reinvestBtn = document.getElementById('reinvestButton');
+                if (reinvestBtn) {
+                    reinvestBtn.disabled = false;
+                    reinvestBtn.classList.remove('opacity-50');
+                }
+                
+                renderWithdrawalHistory(page);
+            } else if (viewId === 'buyTPHistoryView') {
+                renderBuyTPHistory(page);
+            } else if (viewId === 'dailyEarningHistoryView') {
+                renderDailyEarningHistory(page);
+            } else if (viewId === 'aiTradingStatusView') { // New
+                renderAITradingStatus();
+            } else if (viewId === 'myTradePowerView') { // New
+                renderMyTradePower();
+            }
+        }
+
+        // --- Other Feature Logic (Kept from previous version) ---
+
+        // ... (Countdown Timer Logic, ROI Tiers, Buy TP Form Logic, Referral Logic) ...
+
+        const timerElement = document.getElementById('settlement-timer');
+        let totalSeconds = (19 * 3600) + (44 * 60) + 22;
+
+        function formatTime(seconds) {
+            const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+            const s = String(Math.floor(seconds % 60)).padStart(2, '0');
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        function updateTimer() {
+            if (totalSeconds <= 0) {
+                totalSeconds = 0;
+                timerElement.textContent = "Settlement time: Expired!";
+                clearInterval(timerInterval);
+                return;
+            }
+
+            timerElement.textContent = `Settlement time: ${formatTime(totalSeconds)}`;
+            totalSeconds--;
+        }
+
+        updateTimer();
+        const timerInterval = setInterval(updateTimer, 1000);
+
+        // --- Buy TP Logic ---
+        const usdtInput = document.getElementById('usdtAmount');
+        const buyButton = document.getElementById('buyNowButton');
+        const rateDisplay = document.getElementById('dailyRateDisplay');
+        const amountDisplay = document.getElementById('dailyReturnAmount');
+
+        function calculateReturn(usdtValue) {
+            const amount = parseFloat(usdtValue);
+            const minTP = 10; // Minimum for Buy TP is still $10
+
+            if (isNaN(amount) || amount < minTP) {
+                rateDisplay.textContent = '0%';
+                amountDisplay.textContent = '0.00 USDT';
+                buyButton.disabled = true;
+                buyButton.classList.add('opacity-50', 'cursor-not-allowed');
+                buyButton.classList.remove('hover:opacity-95');
+                buyButton.innerHTML = '<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Min 10 USDT)';
+                lucide.createIcons();
+                return;
+            }
+
+            const tier = roiTiers.find(t => amount >= t.threshold);
+            const rate = tier ? tier.rate : roiTiers[roiTiers.length - 1].rate;
+            const rateLabel = tier ? tier.label : '5.5%';
+
+            const dailyReturn = amount * rate;
+
+            rateDisplay.textContent = rateLabel;
+            amountDisplay.textContent = `${dailyReturn.toFixed(4)} USDT`;
+
+            buyButton.disabled = false;
+            buyButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            buyButton.classList.add('hover:opacity-95');
+            buyButton.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Open Gateway)';
+            lucide.createIcons();
+        }
+        
+        function simulateGateway() {
+            const amount = usdtInput.value;
+            if (parseFloat(amount) < 10) {
+                showMessage('Investment Error', 'Minimum investment is 10 USDT.');
+                return;
+            }
+            
+            navigateTo('dashboardView');
+            
+            showMessage(
+                'Payment Gateway Opened', 
+                `You are being redirected to the USDT BEP network gateway to deposit ${amount} USDT. Integration will be completed later.`
+            );
+        }
+        
+        // --- Weekend Earn Logic (UPDATED) ---
+        const weekendAmountInput = document.getElementById('weekendAmount');
+        const weekendBuyButton = document.getElementById('weekendBuyButton');
+        const weekendRateDisplay = document.getElementById('weekendRateDisplay');
+        const weekendReturnAmount = document.getElementById('weekendReturnAmount');
+        const WEEKEND_RATE = 0.30; // 30% return
+        const WEEKEND_MIN_INVEST = 100; // UPDATED MINIMUM
+
+        function calculateWeekendReturn(usdtValue) {
+            const amount = parseFloat(usdtValue);
+            const minInvest = WEEKEND_MIN_INVEST;
+
+            if (hasInvestedThisWeek) {
+                // If already invested, prevent calculation/button activation
+                weekendRateDisplay.textContent = '30%';
+                weekendReturnAmount.textContent = '0.00 USDT';
+                weekendBuyButton.disabled = true;
+                return;
+            }
+
+            if (isNaN(amount) || amount < minInvest) {
+                weekendRateDisplay.textContent = '30%';
+                weekendReturnAmount.textContent = '0.00 USDT';
+                weekendBuyButton.disabled = true;
+                weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
+                weekendBuyButton.classList.remove('hover:opacity-95');
+                // Updated button text
+                weekendBuyButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (Min ${minInvest} USDT)`;
+                lucide.createIcons();
+                return;
+            }
+
+            const totalReturn = amount * WEEKEND_RATE;
+
+            weekendReturnAmount.textContent = `${totalReturn.toFixed(4)} USDT`;
+
+            weekendBuyButton.disabled = false;
+            weekendBuyButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            weekendBuyButton.classList.add('hover:opacity-95');
+            weekendBuyButton.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (48 Hours)';
+            lucide.createIcons();
+        }
+        
+        function simulateWeekendGateway() {
+            const amount = weekendAmountInput.value;
+            if (parseFloat(amount) < WEEKEND_MIN_INVEST) {
+                showMessage('Investment Error', `Minimum investment is ${WEEKEND_MIN_INVEST} USDT.`);
+                return;
+            }
+            
+            if (hasInvestedThisWeek) {
+                showMessage('Restriction Error', 'You have already invested in this offer this week. Please wait for the next week.');
+                return;
+            }
+            
+            // 1. Simulate adding a new processing entry
+            const totalReturn = parseFloat(amount) * WEEKEND_RATE;
+            const newInvestment = {
+                id: mockWeekendEarnHistory.length + 1,
+                amount: parseFloat(amount),
+                date: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0],
+                returnAmount: totalReturn,
+                status: 'Processing'
+            };
+            mockWeekendEarnHistory.unshift(newInvestment);
+            
+            // 2. Set the weekly flag (Simulated)
+            hasInvestedThisWeek = true;
+
+            // Clear input
+            weekendAmountInput.value = '';
+            calculateWeekendReturn(''); // Reset button state
+
+            // 3. Navigate back to dashboard (or history) and show success message
+            navigateTo('dashboardView');
+            
+            showMessage(
+                'Weekend Investment Initiated', 
+                `Successfully invested ${parseFloat(amount).toFixed(2)} USDT into WEEKEND EARN FAST! You are expected to receive ${totalReturn.toFixed(2)} USDT profit in 48 hours. (Weekly Limit Used)`
+            );
+        }
+
+
+        const referralTableBody = document.getElementById('referralTableBody');
+        const levelUsersTitle = document.getElementById('levelUsersTitle');
+        const levelUsersList = document.getElementById('levelUsersList');
+
+
+        function populateReferralTable() {
+            let html = '';
+            mockReferralData.forEach(data => {
+                const isHighlighted = data.level === 1; // Highlight Level 1 only
+                html += `
+                    <tr class="border-b border-gray-100 ${isHighlighted ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}">
+                        <td class="py-3 px-4 text-xs font-bold text-gray-800">${data.level}</td>
+                        <td class="py-3 px-4 text-xs text-center font-medium text-gray-600">${data.users}</td>
+                        <td class="py-3 px-4 text-xs text-right font-medium text-gray-600">$${data.deposited.toLocaleString()}</td>
+                        <td class="py-3 px-4 text-xs text-right font-bold text-green-600">$${data.earnings.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-xs text-center">
+                            <button onclick="showLevelUsers(${data.level})" class="text-blue-500 hover:text-blue-700 text-xs font-semibold px-2 py-1 rounded-full border border-blue-200 hover:bg-blue-50 transition">
+                                Preview (${data.users})
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            referralTableBody.innerHTML = html;
+        }
+
+        function copyReferralLink() {
+            const linkInput = document.getElementById('referralLink');
+            linkInput.select();
+            document.execCommand('copy');
+            showMessage('Success!', 'Your Referral link has been copied to the clipboard.');
+        }
+        
+        function showLevelUsers(level) {
+            const levelData = mockReferralData.find(d => d.level === level);
+            
+            levelUsersTitle.innerHTML = `<i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level ${level} (लेवल ${level} के उपयोगकर्ता)`;
+            levelUsersList.innerHTML = ''; // Clear previous data
+            lucide.createIcons();
+
+            if (!levelData || levelData.usersDetail.length === 0) {
+                levelUsersList.innerHTML = `<p class="text-center text-gray-500 p-8 bg-gray-50 rounded-lg shadow-inner">User details for this level are not currently available. (इस लेवल के उपयोगकर्ता विवरण वर्तमान में उपलब्ध नहीं हैं।)</p>`;
+            } else {
+                let listHtml = '';
+                levelData.usersDetail.forEach(user => {
+                    listHtml += `
+                        <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-md flex justify-between items-center">
+                            <div>
+                                <p class="font-bold text-gray-800">${user.name}</p>
+                                <p class="text-xs text-gray-500 mt-0.5"><i data-lucide="clock" class="w-3 h-3 mr-1 inline-block"></i> ${user.datetime}</p>
+                            </div>
+                            <span class="text-green-600 text-lg font-extrabold">$${user.deposit.toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+                levelUsersList.innerHTML = listHtml;
+                lucide.createIcons();
+            }
+            
+            navigateTo('levelUsersView');
+        }
+        
+        function simulateWithdrawal() {
+            const amountInput = document.getElementById('withdrawalAmount');
+            const walletInput = document.getElementById('walletAddress');
+            const amount = parseFloat(amountInput.value);
+            const wallet = walletInput.value;
+            const minWithdrawal = 20;
+
+            if (!wallet || wallet.length < 10 || !wallet.startsWith('0x')) {
+                 showMessage('Error', 'Please enter a valid wallet address.');
+                 return;
+            }
+
+            if (isNaN(amount) || amount < minWithdrawal) {
+                showMessage('Error', `Minimum withdrawal amount is ${minWithdrawal} USDT.`);
+                return;
+            }
+
+            if (amount > MOCK_AVAILABLE_BALANCE) {
+                showMessage('Error', `Insufficient balance. Available: ${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT.`);
+                return;
+            }
+            
+            // Simulate adding a new processing withdrawal entry
+            const newWithdrawal = {
+                id: mockWithdrawalHistory.length + 1,
+                amount: amount,
+                wallet: wallet.substring(0, 15) + '...',
+                date: new Date().toISOString().split('T')[0],
+                txnHash: 'Processing...',
+                status: 'Processing'
+            };
+            mockWithdrawalHistory.unshift(newWithdrawal);
+            renderWithdrawalHistory(1); // Re-render first page
+            amountInput.value = ''; // Clear input
+
+            showMessage('Withdrawal Initiated', `Your request for ${amount.toFixed(2)} USDT has been submitted. It is now processing.`);
+        }
+        
+        // NEW FUNCTION: Auto-invest all available balance to TP
+        function reinvestAllBalance() {
+            // NOTE: This is a simulation.
+            const amount = MOCK_AVAILABLE_BALANCE;
+            const minReinvest = 10;
+            const newBalance = 0;
+
+            if (amount < minReinvest) {
+                showMessage('Re-invest Error', `Minimum re-investment amount is ${minReinvest} USDT. Available: ${amount.toFixed(2)} USDT.`);
+                return;
+            }
+
+            // 1. Simulate TP purchase logic (get ROI details)
+            const roi = getRoiDetails(amount);
+
+            // 2. Simulate adding a new TP history entry
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toTimeString().split(' ')[0];
+            
+            const newTPPurchase = {
+                id: mockBuyTPHistory.length + 1,
+                amount: amount,
+                date: `${dateStr} ${timeStr.substring(0, 5)}`,
+                ...roi
+            };
+            mockBuyTPHistory.unshift(newTPPurchase);
+            
+            // 3. Update the displayed balance in withdrawalView for visual feedback
+            // This is a visual-only update for the current mock setup.
+            const balanceSpan = document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600');
+            if (balanceSpan) {
+                balanceSpan.textContent = `${newBalance.toFixed(2)} USDT`;
+            }
+            
+            // Temporarily disable the button to prevent double click (simulated)
+            const reinvestBtn = document.getElementById('reinvestButton');
+            if (reinvestBtn) {
+                reinvestBtn.disabled = true;
+                reinvestBtn.classList.add('opacity-50');
+            }
+
+
+            // 4. Navigate back to dashboard and show success message
+            navigateTo('dashboardView');
+
+            showMessage(
+                'TP Re-investment Successful', 
+                `Successfully re-invested ${amount.toFixed(2)} USDT into Trade Power (TP). Your daily earnings will increase!`
+            );
+        }
+
+
+        // Simple message box function instead of alert()
+        function showMessage(title, message) {
+            const messageBox = document.createElement('div');
+            messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            messageBox.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center transform scale-95 transition-all duration-300 ease-out animate-in fade-in zoom-in">
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">${title}</h3>
+                    <p class="text-gray-600 mb-5">${message}</p>
+                    <button onclick="this.parentNode.parentNode.remove()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition">OK</button>
+                </div>
+            `;
+            document.body.appendChild(messageBox);
+        }
+
+        // --- Initialization ---
+        window.onload = function() {
+            lucide.createIcons();
+            // Initial check to set the dashboard button state
+            checkWeekendEligibility();
+            navigateTo(currentPage); // Initial navigation to dashboardView
+        };
+    </script>
 </body>
 </html>
