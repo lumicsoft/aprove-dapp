@@ -395,12 +395,13 @@
             <div class="mb-8">
                 <label for="referralLink" class="block text-sm font-semibold text-gray-700 mb-2">Your Invitation Link (आपका निमंत्रण लिंक)</label>
                 <div class="flex">
-                    <input type="text" id="referralLink" value="https://ai.earn/invite/mock-user-12345" readonly
+                    <input type="text" id="referralLink" value="https://t.me/AproveDappBot?start=mock-user-12345" readonly
                            class="flex-1 p-3 border border-gray-300 rounded-l-xl text-gray-600 bg-gray-50 text-sm truncate">
                     <button onclick="copyReferralLink()" class="pink-gradient-button text-white px-4 rounded-r-xl font-bold text-sm flex items-center">
                         <i data-lucide="copy" class="w-4 h-4 mr-2"></i> Copy
                     </button>
                 </div>
+                <p class="text-xs text-gray-500 mt-1">Share this link to invite users via Telegram Bot.</p>
             </div>
 
             <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
@@ -655,9 +656,13 @@
         let dailyEarningHistoryCurrentPage = 1;
         let weekendEarnHistoryCurrentPage = 1; 
 
-        // 🟢 5. Telegram Global Variables
+        // 🟢 4. Telegram Global Variables
         let TG_USER_ID = '000000000'; // Fallback
         let TG_USERNAME = 'User';      // Fallback
+        
+        // ✅ 🎯 यहाँ आपके बॉट का नाम बदला गया है!
+        const TELEGRAM_BOT_USERNAME = 'AproveDappBot'; 
+        
         let TG_INIT_DATA = null;
         
 
@@ -711,31 +716,14 @@
             };
         }
 
-        // 🟢 6. Mock Referral Data को Telegram User के नाम के साथ अपडेट किया गया
-        function getReferralName(index) {
-            // असली Telegram User के नाम का उपयोग करें
-            if (index === 1) return `${TG_USERNAME} (You)`; 
-            // बाकी के लिए Mock Data
-            const names = ['Aman S.', 'Priya K.', 'Vikram R.', 'Neha J.', 'Karan M.', 'Sonal B.', 'Rajesh P.'];
-            return names[(index + TG_USER_ID.slice(-1)) % names.length];
-        }
-
+        // 🟢 5. Mock Referral Data को सरल किया गया (usersDetail हटाया गया)
         const mockReferralData = [
-            { level: 1, users: 12, deposited: 5200, earnings: 52.00, usersDetail: [
-                { name: getReferralName(1) + ' (ID: 001)', deposit: 500, datetime: '2025-10-01 10:30' },
-                { name: getReferralName(2) + ' (ID: 002)', deposit: 100, datetime: '2025-10-01 12:45' },
-                { name: getReferralName(3) + ' (ID: 003)', deposit: 300, datetime: '2025-10-02 09:15' },
-                { name: getReferralName(4) + ' (ID: 004)', deposit: 4300, datetime: '2025-10-03 14:00' }
-            ] },
-            { level: 2, users: 45, deposited: 15500, earnings: 155.00, usersDetail: [
-                { name: getReferralName(5) + ' (ID: 010)', deposit: 1000, datetime: '2025-10-05 18:30' },
-                { name: getReferralName(6) + ' (ID: 011)', deposit: 50, datetime: '2025-10-06 09:00' },
-                { name: getReferralName(7) + ' (ID: 012)', deposit: 1500, datetime: '2025-10-07 11:10' }
-            ] },
-            { level: 3, users: 120, deposited: 32000, earnings: 320.00, usersDetail: [] },
-            { level: 4, users: 200, deposited: 45000, earnings: 450.00, usersDetail: [] },
-            { level: 5, users: 300, deposited: 50000, earnings: 350.00, usersDetail: [] },
-            { level: 6, users: 400, deposited: 60000, earnings: 0.00, usersDetail: [] }
+            { level: 1, users: 12, deposited: 5200, earnings: 52.00, commissionRate: '10%' },
+            { level: 2, users: 45, deposited: 15500, earnings: 155.00, commissionRate: '5%' },
+            { level: 3, users: 120, deposited: 32000, earnings: 320.00, commissionRate: '3%' },
+            { level: 4, users: 200, deposited: 45000, earnings: 450.00, commissionRate: '2%' },
+            { level: 5, users: 300, deposited: 50000, earnings: 350.00, commissionRate: '1%' },
+            { level: 6, users: 400, deposited: 60000, earnings: 0.00, commissionRate: '0.5%' }
         ];
 
         // Mock AI Trading History (10 entries for cleaner view)
@@ -1248,7 +1236,7 @@
                 const isHighlighted = data.level === 1; // Highlight Level 1 only
                 html += `
                     <tr class="border-b border-gray-100 ${isHighlighted ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}">
-                        <td class="py-3 px-4 text-xs font-bold text-gray-800">${data.level}</td>
+                        <td class="py-3 px-4 text-xs font-bold text-gray-800">${data.level} <span class="block text-gray-500 text-[10px]">${data.commissionRate} Comm.</span></td>
                         <td class="py-3 px-4 text-xs text-center font-medium text-gray-600">${data.users + (parseInt(TG_USER_ID.slice(-1)) || 0)}</td>
                         <td class="py-3 px-4 text-xs text-right font-medium text-gray-600">$${data.deposited.toLocaleString()}</td>
                         <td class="py-3 px-4 text-xs text-right font-bold text-green-600">$${data.earnings.toFixed(2)}</td>
@@ -1262,9 +1250,9 @@
             });
             referralTableBody.innerHTML = html;
 
-            // Referral Link को TG User ID से अपडेट करें
+            // ✅ 7. Referral Link को Bot Link से अपडेट करें
             if (referralLinkInput) {
-                referralLinkInput.value = `https://ai.earn/invite/${TG_USER_ID}`;
+                referralLinkInput.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${TG_USER_ID}`;
             }
         }
 
@@ -1280,28 +1268,54 @@
             }
         }
 
+        // ✅ 9. showLevelUsers फ़ंक्शन को पूरी तरह से अपडेट किया गया है
         function showLevelUsers(level) {
             const levelData = mockReferralData.find(d => d.level === level);
             if (!levelData) return;
 
             levelUsersTitle.innerHTML = `<i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level ${level} (लेवल ${level} के उपयोगकर्ता)`;
             
-            let usersHtml = levelData.usersDetail.map(user => `
-                <div class="p-4 bg-gray-50 rounded-xl shadow-inner flex justify-between items-center border border-gray-200">
-                    <div>
-                        <p class="font-semibold text-gray-800">${user.name}</p>
-                        <p class="text-xs text-gray-500">Joined: ${user.datetime}</p>
-                    </div>
-                    <span class="font-bold text-lg text-green-600">$${user.deposit.toLocaleString()}</span>
-                </div>
-            `).join('');
+            // Total users in this level (mocked based on initial count + random from ID)
+            const totalUsers = levelData.users + (parseInt(TG_USER_ID.slice(-1)) || 0);
 
-            if (levelData.usersDetail.length === 0) {
-                 usersHtml = `<p class="text-center py-10 text-gray-500 font-semibold">No active user details to display for this level yet.</p>`;
+            let usersHtml = '';
+            
+            if (totalUsers === 0) {
+                usersHtml = `<p class="text-center py-10 text-gray-500 font-semibold">No active user details to display for this level yet.</p>`;
+            } else {
+                // Dynamic generation of mock user details to simulate hierarchy
+                const mockNames = ['Aman S.', 'Priya K.', 'Vikram R.', 'Neha J.', 'Karan M.', 'Sonal B.', 'Rajesh P.', 'Anil D.', 'Kiran B.', 'Zoya F.'];
+                
+                // Show max 15 users for performance
+                for (let i = 1; i <= Math.min(totalUsers, 15); i++) { 
+                    const userName = mockNames[(i + level * 2) % mockNames.length];
+                    const deposit = (100 + (i * 50) * Math.random()).toFixed(2);
+                    
+                    let referrerDisplay;
+                    if (level === 1) {
+                        // If Level 1, the referrer is the current user (You).
+                        referrerDisplay = `<p class="text-xs text-blue-500 font-bold">Referred by: You (${TG_USERNAME})</p>`;
+                    } else {
+                        // If Level 2+, the referrer is a mock user from the previous level.
+                        const referrerName = mockNames[(i + level * 3) % mockNames.length] + ' (L' + (level - 1) + ')';
+                        referrerDisplay = `<p class="text-xs text-blue-500 font-bold">Referred by: ${referrerName}</p>`;
+                    }
+
+                    usersHtml += `
+                        <div class="p-4 bg-gray-50 rounded-xl shadow-inner flex justify-between items-center border border-gray-200">
+                            <div>
+                                <p class="font-semibold text-gray-800">${userName} (ID: ${1000 + i + level * 100})</p>
+                                ${referrerDisplay}
+                                <p class="text-xs text-gray-500">Joined: 2025-10-${String(i).padStart(2, '0')}</p>
+                            </div>
+                            <span class="font-bold text-lg text-green-600">$${deposit}</span>
+                        </div>
+                    `;
+                }
             }
 
             levelUsersList.innerHTML = usersHtml;
-            
+            lucide.createIcons();
             navigateTo('levelUsersView');
         }
 
@@ -1340,7 +1354,7 @@
             
             showMessage('Withdrawal Initiated', `Your request for ${amount.toFixed(2)} USDT (Net: ${netAmount.toFixed(2)} USDT) has been submitted. It is now processing.`);
             
-            // 🟢 9. Telegram Web App को सक्सेस फ़ीडबैक दें
+            // 🟢 10. Telegram Web App को सक्सेस फ़ीडबैक दें
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             }
@@ -1387,7 +1401,7 @@
                 'TP Re-investment Successful',
                 `Successfully re-invested ${amount.toFixed(2)} USDT into Trade Power (TP). Your daily earnings will increase!`
             );
-             // 🟢 10. Telegram Web App को सक्सेस फ़ीडबैक दें
+             // 🟢 11. Telegram Web App को सक्सेस फ़ीडबैक दें
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             }
@@ -1409,6 +1423,10 @@
                     backToView = 'buyTPView'; // Go back to Buy TP form from History
                 } else if (viewId === 'weekendEarnHistoryView') {
                     backToView = 'weekendEarnView'; // Go back to Weekend Earn form from History
+                } else if (viewId === 'buyTPView') {
+                    backToView = 'dashboardView';
+                } else if (viewId === 'referEarnView') {
+                    backToView = 'dashboardView';
                 }
                 
                 backButtonHtml = `
@@ -1522,7 +1540,7 @@
             document.body.appendChild(messageBox);
         }
 
-        // 🟢 11. Telegram Web App Initialization Logic
+        // 🟢 12. Telegram Web App Initialization Logic
         function initializeTelegramWebApp() {
             if (window.Telegram && window.Telegram.WebApp) {
                 window.Telegram.WebApp.ready();
@@ -1564,9 +1582,9 @@
                     userLabel.textContent = `Telegram ID (${TG_USERNAME}):`;
                 }
 
-                // Referral Link को अपडेट करें
+                // Referral Link को अपडेट करें (यह populateReferralTable() में भी होता है, पर यहाँ भी रखना ठीक है)
                 if (referralLinkInput) {
-                    referralLinkInput.value = `https://ai.earn/invite/${TG_USER_ID}`;
+                    referralLinkInput.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${TG_USER_ID}`;
                 }
             } else {
                 console.warn('Telegram WebApp not found. Using fallback mock data.');
@@ -1576,7 +1594,7 @@
 
         // --- Initialization ---
         window.onload = function() {
-            // 🟢 12. Telegram WebApp को initialize करें
+            // 🟢 13. Telegram WebApp को initialize करें
             initializeTelegramWebApp(); 
             
             // Initializing all view elements for navigation logic
