@@ -13,7 +13,7 @@
     <style>
         /* Custom CSS for vibrant look and feel */
         
-        /* 🟢 2. CSS वैरिएबल (Custom Properties) सेट किए गए */
+        /* Telegram Theme Variables */
         :root {
             --tg-bg-color: #f0f2f5; /* Default fallback */
             --tg-text-color: #1f2937; /* Default fallback */
@@ -22,16 +22,43 @@
         
         body {
             font-family: 'Inter', sans-serif;
-            /* Telegram के थीम कलर का उपयोग करें */
             background-color: var(--tg-bg-color); 
-            color: var(--tg-text-color); /* Darker text for contrast */
+            color: var(--tg-text-color); 
         }
         
-        /* Tailwind classes जो TG theme पर निर्भर करते हैं उन्हें बदलने के लिए: */
+        /* Tailwind classes based on TG theme */
         .text-gray-600 { color: var(--tg-hint-color); }
+        .bg-white { background-color: var(--tg-bg-color); }
         
+        /* Premium TP Card Style (Updated: Compact) */
+        .tp-premium-card {
+            position: relative;
+            background: white;
+            overflow: hidden;
+            border: none; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .tp-premium-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* Vibrant border effect */
+            border: 4px solid transparent; 
+            border-radius: 1.5rem; /* Matches rounded-3xl */
+            background: linear-gradient(135deg, #FF6B8A, #3B82F6) border-box; 
+            -webkit-mask: 
+                linear-gradient(#fff 0 0) padding-box, 
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        
+        /* Gradient Button Styles (Unchanged) */
         .green-gradient-button {
-            /* Stronger, more appealing gradient */
             background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
@@ -42,7 +69,6 @@
             box-shadow: 0 6px 15px rgba(16, 185, 129, 0.6);
         }
         .pink-gradient-button {
-            /* Vibrant pink/red gradient */
             background: linear-gradient(135deg, #FF3D69 0%, #FF6B8A 100%);
             transition: all 0.3s ease;
             box-shadow: 0 4px 10px rgba(255, 61, 105, 0.4);
@@ -122,14 +148,19 @@
         .pagination-button:not(.active):hover {
             background-color: #E5E7EB;
         }
+        /* AI Trading Status Table Premium Styling */
         .trading-status-th {
             background-color: #1f2937;
             color: white;
         }
-        /* Telegram Web App Styles */
-        .bg-white { background-color: var(--tg-bg-color); }
-        .bg-gray-800 { background-color: #1f2937; } /* Keep dark card dark */
-        .shadow-md, .shadow-2xl { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+        .premium-trading-table td {
+            padding-top: 0.6rem; 
+            padding-bottom: 0.6rem;
+            line-height: 1.2;
+        }
+        .pnl-cell {
+            font-size: 1.1rem; /* Slightly larger for profit */
+        }
         
     </style>
 </head>
@@ -170,21 +201,16 @@
                 </button>
             </div>
 
-            <div class="bg-white p-6 rounded-3xl shadow-2xl text-center border border-gray-100">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="flex items-center">
-                        <span class="text-gray-600 font-semibold text-lg">TP (Trade Power)</span>
-                        <i data-lucide="info" class="w-4 h-4 text-gray-400 ml-1 cursor-pointer"></i>
+            <div class="p-4 rounded-3xl shadow-2xl text-center tp-premium-card"> <div class="flex justify-between items-center mb-3"> <div class="flex items-center">
+                        <span class="text-gray-600 font-semibold text-base">TP (Trade Power)</span> <i data-lucide="info" class="w-4 h-4 text-gray-400 ml-1 cursor-pointer"></i>
                     </div>
                     <i data-lucide="refresh-ccw" class="w-5 h-5 text-blue-500 cursor-pointer hover:rotate-180 transition duration-500"></i>
                 </div>
 
-                <div class="flex items-center justify-center mb-6 py-4">
-                    <span class="text-8xl font-black text-gray-900 tracking-tighter">0.5</span>
+                <div class="flex items-center justify-center mb-4 py-2"> <span class="text-7xl font-black text-gray-900 tracking-tighter">0.5</span>
                 </div>
 
-                <p class="text-sm mb-4 text-gray-700 flex items-center justify-center">
-                    <span class="text-gray-500 mr-2">Daily Earn:</span>
+                <p class="text-sm mb-3 text-gray-700 flex items-center justify-center"> <span class="text-gray-500 mr-2">Daily Earn:</span>
                     <i data-lucide="dollar-sign" class="w-4 h-4 text-green-600"></i>
                     <span class="font-bold text-green-600 ml-0.5">$0.028</span>
                     <button onclick="navigateTo('dailyEarningHistoryView')" class="text-xs text-gray-500 ml-3 hover:text-gray-700 flex items-center bg-gray-100 rounded-full px-2 py-1 shadow-inner">
@@ -192,22 +218,20 @@
                     </button>
                 </p>
 
-                <div class="flex justify-center mb-8">
-                    <div id="settlement-timer" class="bg-purple-50 text-purple-700 font-bold rounded-full px-5 py-2 text-md shadow-inner border border-purple-200">
+                <div class="flex justify-center mb-6"> <div id="settlement-timer" class="bg-purple-50 text-purple-700 font-bold rounded-full px-5 py-2 text-md shadow-inner border border-purple-200">
                         Settlement time: 00h 00m 00s
                     </div>
                 </div>
 
-                <div class="flex space-x-4 justify-center">
-                    <button onclick="navigateTo('buyTPView')" class="green-gradient-button flex-1 py-4 px-6 rounded-xl text-white font-extrabold text-lg flex items-center justify-center max-w-[200px]">
-                        <i data-lucide="trending-up" class="w-5 h-5 mr-2"></i> Buy TP
+                <div class="flex space-x-3 justify-center">
+                    <button onclick="navigateTo('buyTPView')" class="green-gradient-button flex-1 py-3 px-4 rounded-xl text-white font-extrabold text-sm flex items-center justify-center">
+                        <i data-lucide="trending-up" class="w-4 h-4 mr-1"></i> Buy TP
                     </button>
-                    <button onclick="navigateTo('referEarnView')" class="pink-gradient-button flex-1 py-4 px-6 rounded-xl text-white font-extrabold text-lg flex items-center justify-center max-w-[200px]">
-                        <span class="text-yellow-300 text-2xl font-black mr-1">$10</span> Refer & Earn
+                    <button onclick="navigateTo('referEarnView')" class="pink-gradient-button flex-1 py-3 px-4 rounded-xl text-white font-extrabold text-sm flex items-center justify-center">
+                        <span class="text-yellow-300 text-lg font-black mr-1">$10</span> Refer & Earn
                     </button>
                 </div>
             </div>
-
             <div class="bg-white p-6 pt-10 rounded-3xl shadow-2xl mt-6 relative overflow-hidden border border-gray-100">
                 <div class="hot-badge shadow-lg">HOT</div>
                 <h2 class="text-xl font-bold mb-4 text-gray-800">Return on Investment in AiEarn</h2>
@@ -265,7 +289,7 @@
             </p>
 
             <button onclick="navigateTo('weekendEarnHistoryView')" class="w-full text-sm font-semibold text-blue-600 hover:text-blue-800 mb-6 flex items-center justify-center py-2 bg-blue-50 rounded-lg shadow-inner">
-                <i data-lucide="history" class="w-4 h-4 mr-2"></i> View Weekend Earn History 
+                <i data-lucide="history" class="w-4 h-4 mr-2"></i> View Weekend Earn History
             </button>
 
 
@@ -296,21 +320,21 @@
 
             <button onclick="simulateWeekendGateway()" id="weekendBuyButton" disabled
                     class="w-full orange-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg opacity-50 cursor-not-allowed">
-                <i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (Min 100 USDT)
+                <i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (max 30 USDT)
             </button>
         </section>
 
         <section id="weekendEarnHistoryView" data-view="weekend-earn-history" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
             <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="history" class="w-6 h-6 mr-2 text-yellow-500"></i> Weekend Earn History 
+                <i data-lucide="history" class="w-6 h-6 mr-2 text-yellow-500"></i> Weekend Earn History
             </h2>
             <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
                 <table class="min-w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time </th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Invested </th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Return </th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Invested</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Return</th>
                             <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Status</th>
                         </tr>
                     </thead>
@@ -322,12 +346,11 @@
         </section>
         
         <section id="buyTPView" data-view="buy-tp" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
-            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="wallet" class="w-6 h-6 mr-2 text-green-500"></i> TP Investment Portal
-            </h2>
+            <i data-lucide="wallet" class="w-6 h-6 mr-2 text-green-500"></i>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Buy Trade Power (TP)</h2>
             
             <button onclick="navigateTo('buyTPHistoryView')" class="w-full text-sm font-semibold text-blue-600 hover:text-blue-800 mb-6 flex items-center justify-center py-2 bg-blue-50 rounded-lg shadow-inner">
-                <i data-lucide="layers" class="w-4 h-4 mr-2"></i> View TP Purchase History 
+                <i data-lucide="layers" class="w-4 h-4 mr-2"></i> View TP Purchase History
             </button>
 
 
@@ -370,9 +393,9 @@
                 <table class="min-w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time </th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Amount )</th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Daily $\$$ Earning </th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Amount</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Daily $$ Earning</th>
                         </tr>
                     </thead>
                     <tbody id="buyTPHistoryBody">
@@ -383,17 +406,17 @@
         </section>
         
         <section id="referEarnView" data-view="refer-earn" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
-            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="users" class="w-6 h-6 mr-2 text-pink-500"></i> Elite Referral Program 
-            </h2>
+             <i data-lucide="users" class="w-6 h-6 mr-2 text-pink-500"></i>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Elite Referral Program</h2>
+            
             <div class="bg-pink-50 border-l-4 border-pink-500 p-4 rounded-xl mb-6 shadow-inner">
-                <p class="text-sm font-semibold text-pink-700 mb-1">Total Referral Earnings :</p>
+                <p class="text-sm font-semibold text-pink-700 mb-1">Total Referral Earnings:</p>
                 <span class="text-4xl font-extrabold text-pink-600">$1,335.00</span>
-                <p class="text-xs text-gray-500 mt-2">Earn up to 10 Levels deep. </p>
+                <p class="text-xs text-gray-500 mt-2">Earn up to 10 Levels deep.</p>
             </div>
             
             <div class="mb-8">
-                <label for="referralLink" class="block text-sm font-semibold text-gray-700 mb-2">Your Invitation Link </label>
+                <label for="referralLink" class="block text-sm font-semibold text-gray-700 mb-2">Your Invitation Link</label>
                 <div class="flex">
                     <input type="text" id="referralLink" value="https://t.me/AproveDappBot?start=mock-user-12345" readonly
                            class="flex-1 p-3 border border-gray-300 rounded-l-xl text-gray-600 bg-gray-50 text-sm truncate">
@@ -412,9 +435,9 @@
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
                             <th class="py-3 px-4 text-xs font-bold text-gray-700">Level</th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Users </th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Users</th>
                             <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Deposited</th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Earned </th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Earned</th>
                             <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Details</th>
                         </tr>
                     </thead>
@@ -428,27 +451,26 @@
             <h2 id="levelUsersTitle" class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
                 <i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level X
             </h2>
-            <p class="text-gray-600 mb-6 text-sm">Details of users and their initial investment (deposit) in this level. </p>
+            <p class="text-gray-600 mb-6 text-sm">Details of users and their initial investment (deposit) in this level.</p>
             
             <div id="levelUsersList" class="space-y-4">
                 </div>
         </section>
 
         <section id="aiTradingStatusView" data-view="ai-trading-status" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
-            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="activity" class="w-6 h-6 mr-2 text-blue-500"></i> AI Trading Status 
-            </h2>
-            <p class="text-gray-600 mb-4 text-sm font-semibold">Live trades executed by the AI on Forex pairs. (Last 10 Entries)</p>
+             <i data-lucide="activity" class="w-6 h-6 mr-2 text-blue-500"></i>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">AI Trading Status</h2>
+            
+            <p class="text-gray-600 mb-4 text-sm font-semibold">Live trades executed by the AI on Forex pairs. (Last 10 Profitable Entries)</p>
             
             <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
-                <table class="min-w-full text-left border-collapse">
+                <table class="min-w-full text-left border-collapse premium-trading-table">
                     <thead class="bg-gray-800 sticky top-0">
                         <tr>
-                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th">Pair/Side</th>
-                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th">Leverage</th>
-                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th text-right">Entry/Exit Price</th>
-                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th text-right">% Profit</th>
-                            <th class="py-3 px-2 text-xs font-bold text-white uppercase trading-status-th">Time (UTC)</th>
+                            <th class="py-3 px-3 text-xs font-bold text-white uppercase trading-status-th" style="width: 38%;">Pair (Side | X)</th>
+                            <th class="py-3 px-1 text-xs font-bold text-white uppercase trading-status-th text-center" style="width: 32%;">Entry / Current</th>
+                            <th class="py-3 px-3 text-xs font-bold text-white uppercase trading-status-th text-right" style="width: 18%;">% Profit</th>
+                            <th class="py-3 px-1 text-xs font-bold text-white uppercase trading-status-th text-right" style="width: 12%;">Time</th>
                         </tr>
                     </thead>
                     <tbody id="aiTradingHistoryBody">
@@ -458,9 +480,8 @@
         </section>
 
         <section id="myTradePowerView" data-view="my-trade-power" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
-            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="layers-3d" class="w-6 h-6 mr-2 text-orange-500"></i> My Trade Power 
-            </h2>
+             <i data-lucide="layers-3d" class="w-6 h-6 mr-2 text-orange-500"></i>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">My Trade Power</h2>
             <p class="text-gray-600 mb-6 text-sm">All your active TP packages with a 20-day validity status.</p>
 
             <div id="myTPPackagesList" class="space-y-6">
@@ -519,54 +540,55 @@
             </div>
         </section>
 
-
         <section id="withdrawalView" data-view="withdrawal" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
-            <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="arrow-down-left" class="w-6 h-6 mr-2 text-orange-500"></i> Request Withdrawal 
-            </h2>
-
+             <i data-lucide="arrow-down-left" class="w-6 h-6 mr-2 text-orange-500"></i>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Request Withdrawal</h2>
+            
             <div class="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-xl shadow-inner">
                 <div class="flex justify-between items-center mb-2">
-                    <p class="text-sm font-semibold text-orange-700" id="tgUserLabel">Your User ID:</p>
-                    <span class="font-bold text-orange-900 bg-orange-100 px-3 py-1 rounded-full text-sm" id="tgUserDisplay">Loading ID...</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <p class="text-lg font-semibold text-orange-700">Available Balance:</p>
-                    <span class="text-3xl font-extrabold text-orange-600">450.75 USDT</span>
-                </div>
-            </div>
-
-            <button onclick="reinvestAllBalance()" id="reinvestButton" class="w-full green-gradient-button py-3 rounded-xl text-white font-extrabold text-sm mb-6 flex items-center justify-center shadow-lg">
-                <i data-lucide="layers-3d" class="w-4 h-4 mr-2"></i> Re-invest All Balance to TP 
-            </button>
-            
-            <div class="mb-6">
-                <label for="walletAddress" class="block text-sm font-semibold text-gray-700 mb-2">Your USDT Wallet Address (BEP20)</label>
-                <div class="flex">
-                    <input type="text" id="walletAddress" placeholder="Enter or paste your wallet address" value="0xMockAddress123..."
-                           class="flex-1 p-3 border border-gray-300 rounded-l-xl text-gray-600 bg-gray-50 text-sm truncate focus:ring-blue-500 focus:border-blue-500">
-                    <button onclick="showMessage('Wallet Save', 'Wallet address saved successfully!')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-r-xl font-bold text-sm flex items-center">
-                        <i data-lucide="save" class="w-4 h-4 mr-2"></i> Save
+                    <p class="text-sm font-semibold text-orange-700">Available Balance:</p>
+                    <button onclick="simulateReinvest(MOCK_AVAILABLE_BALANCE)" id="reinvestButton"
+                            class="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full hover:bg-blue-600 transition disabled:opacity-50">
+                        Re-invest All
                     </button>
                 </div>
-                <p class="text-xs text-red-500 mt-1">Ensure this is a correct BEP20 (Binance Smart Chain) USDT address.</p>
+                <span class="text-3xl font-extrabold text-orange-600">450.75 USDT</span>
+                <p class="text-xs text-gray-500 mt-2">Min. Withdrawal: 10 USDT | Fee: 5%</p>
             </div>
-
-            <div class="mb-8">
-                <label for="withdrawalAmount" class="block text-sm font-semibold text-gray-700 mb-2">Withdrawal Amount (USDT)</label>
+            
+            <div class="mb-5">
+                <label for="withdrawalAmount" class="block text-sm font-semibold text-gray-700 mb-2">Amount to Withdraw (USDT)</label>
                 <div class="relative rounded-xl shadow-inner border border-gray-200">
                     <input type="number" id="withdrawalAmount" placeholder="Min. 10 USDT" 
-                           min="10" step="0.01" max="450.75"
+                           min="10" step="0.01"
+                           oninput="calculateNetWithdrawal(this.value)"
                            class="input-usdt w-full p-4 pr-16 text-2xl font-bold text-gray-900 border-none bg-transparent focus:ring-orange-500 focus:border-orange-500 rounded-xl"
                            required>
                     <span class="absolute right-0 top-0 bottom-0 flex items-center pr-4 text-xl font-extrabold text-orange-600">USDT</span>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Fee: 1 USDT + 1% of the amount. (Minimum Withdrawal: 10 USDT)</p>
             </div>
 
-            <button onclick="simulateWithdrawal()" id="withdrawalButton" 
-                    class="w-full orange-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg">
-                <i data-lucide="send" class="w-5 h-5 mr-2 inline-block"></i> Confirm Withdrawal
+            <div class="bg-gray-50 border-l-4 border-gray-300 p-4 rounded-xl mb-5 shadow-inner">
+                <p class="text-sm font-medium text-gray-700 flex items-center mb-1">
+                    <i data-lucide="minus-circle" class="w-4 h-4 mr-2 text-red-500"></i> Net Fee (5.0%):
+                    <span id="withdrawalFee" class="font-extrabold text-red-600 ml-1">0.00 USDT</span>
+                </p>
+                <p class="text-lg font-bold text-gray-900 flex items-center">
+                    <i data-lucide="check-square" class="w-5 h-5 mr-2 text-green-600"></i> You Will Receive: 
+                    <span id="netReceiveAmount" class="ml-1 text-2xl">0.00 USDT</span>
+                </p>
+            </div>
+            
+            <div class="mb-8">
+                <label for="withdrawalAddress" class="block text-sm font-semibold text-gray-700 mb-2">USDT TRC20 Address</label>
+                <input type="text" id="withdrawalAddress" placeholder="Enter your USDT TRC20 wallet address"
+                       class="w-full p-3 border border-gray-300 rounded-xl shadow-inner text-gray-800 focus:ring-orange-500 focus:border-orange-500">
+                <p id="tgUserLabel" class="text-xs text-gray-500 mt-1">Telegram ID (User_000000000): <span id="tgUserDisplay" class="font-medium text-gray-700">000000000</span></p>
+            </div>
+
+            <button onclick="simulateWithdrawal()" id="withdrawButton" disabled
+                    class="w-full orange-gradient-button py-4 rounded-xl text-white font-extrabold text-lg shadow-lg opacity-50 cursor-not-allowed">
+                <i data-lucide="wallet" class="w-5 h-5 mr-2 inline-block"></i> Confirm Withdrawal
             </button>
 
             <h3 class="text-xl font-bold text-gray-800 flex items-center mb-4 mt-8 border-t pt-4">
@@ -576,30 +598,29 @@
                 <table class="min-w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Amount </th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date </th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Amount</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date</th>
                             <th class="py-3 px-4 text-xs font-bold text-gray-700 text-center">Status/TXN</th>
                         </tr>
                     </thead>
                     <tbody id="withdrawalHistoryBody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
             <div id="withdrawalHistoryPagination" class="flex justify-center items-center mt-6"></div>
-
         </section>
 
         <section id="dailyEarningHistoryView" data-view="daily-earning-history" class="hidden-view view bg-white p-6 rounded-3xl shadow-2xl">
             <h2 class="text-2xl font-bold text-gray-800 flex items-center mb-6 border-b pb-3">
-                <i data-lucide="history" class="w-6 h-6 mr-2 text-green-500"></i> Daily Earning History 
+                <i data-lucide="history" class="w-6 h-6 mr-2 text-green-500"></i> Daily Earning History
             </h2>
             <div class="overflow-x-auto rounded-xl shadow-md border border-gray-200">
                 <table class="min-w-full text-left border-collapse">
                     <thead class="bg-gray-100 sticky top-0">
                         <tr>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date </th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Earning </th>
-                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">TP Rate </th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700">Date/Time</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">Earning</th>
+                            <th class="py-3 px-4 text-xs font-bold text-gray-700 text-right">TP Rate</th>
                         </tr>
                     </thead>
                     <tbody id="dailyEarningHistoryBody">
@@ -611,77 +632,70 @@
 
     </div>
 
-    <footer id="footer" class="bg-white border-t border-gray-200 fixed bottom-0 left-0 right-0 z-30 shadow-2xl">
-        <div class="max-w-lg mx-auto flex justify-around items-center p-3">
-            <button onclick="navigateTo('dashboardView')" class="flex flex-col items-center text-green-600 font-bold text-xs p-1">
-                <i data-lucide="rocket" class="w-6 h-6 mb-1"></i>
-                <span class="text-xs">AiEarn</span>
+    <footer class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-gray-200 shadow-2xl z-30">
+        <div class="flex justify-around items-center h-16">
+            <button onclick="navigateTo('dashboardView')" id="nav-dashboard" class="flex flex-col items-center justify-center text-sm font-medium text-blue-600 p-2 active-nav">
+                <i data-lucide="home" class="w-6 h-6"></i>
+                <span class="mt-0.5 text-xs">Home</span>
             </button>
-            <button onclick="navigateTo('referEarnView')" class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
-                <i data-lucide="users" class="w-6 h-6 mb-1"></i>
-                <span class="text-xs">Refer & Earn</span>
+            <button onclick="navigateTo('buyTPView')" id="nav-buy-tp" class="flex flex-col items-center justify-center text-sm font-medium text-gray-500 hover:text-blue-500 p-2">
+                <i data-lucide="shopping-cart" class="w-6 h-6"></i>
+                <span class="mt-0.5 text-xs">Buy TP</span>
             </button>
-            <button onclick="navigateTo('introductionView')" class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
-                <i data-lucide="info" class="w-6 h-6 mb-1"></i>
-                <span class="text-xs">Introduction</span>
+            <button onclick="navigateTo('referEarnView')" id="nav-refer-earn" class="flex flex-col items-center justify-center text-sm font-medium text-gray-500 hover:text-blue-500 p-2">
+                <i data-lucide="gift" class="w-6 h-6"></i>
+                <span class="mt-0.5 text-xs">Refer</span>
             </button>
-            <button onclick="navigateTo('withdrawalView')" class="flex flex-col items-center text-gray-500 hover:text-green-600 font-medium text-xs p-1">
-                <i data-lucide="arrow-down-left" class="w-6 h-6 mb-1"></i>
-                <span class="text-xs">Withdrawal</span>
+            <button onclick="navigateTo('withdrawalView')" id="nav-withdrawal" class="flex flex-col items-center justify-center text-sm font-medium text-gray-500 hover:text-blue-500 p-2">
+                <i data-lucide="banknote" class="w-6 h-6"></i>
+                <span class="mt-0.5 text-xs">Withdraw</span>
+            </button>
+            <button onclick="navigateTo('introductionView')" id="nav-intro" class="flex flex-col items-center justify-center text-sm font-medium text-gray-500 hover:text-blue-500 p-2">
+                <i data-lucide="user" class="w-6 h-6"></i>
+                <span class="mt-0.5 text-xs">About</span>
             </button>
         </div>
     </footer>
 
+    <div id="message-container" class="fixed inset-0 z-50 pointer-events-none"></div>
+
     <script>
-        // --- Global State ---
-        let currentPage = 'dashboardView'; // Default view
-        const views = {};
+        // --- Global State and Constants ---
         const viewTitles = {
-            'dashboardView': 'AiEarn Dashboard',
-            'buyTPView': 'TP Investment Portal',
-            'buyTPHistoryView': 'TP Purchase History',
-            'referEarnView': 'Refer & Earn Program',
-            'levelUsersView': 'Referral Users Detail',
-            'aiTradingStatusView': 'AI Trading Status',
-            'myTradePowerView': 'My Trade Power',
-            'withdrawalView': 'Request Withdrawal',
-            'introductionView': 'Company Profile',
-            'dailyEarningHistoryView': 'Daily Earning History',
-            'weekendEarnView': 'WEEKEND EARN FAST',
-            'weekendEarnHistoryView': 'Weekend Earn History'
+            dashboardView: 'AiEarn Dashboard',
+            buyTPView: 'Buy Trade Power (TP)',
+            buyTPHistoryView: 'TP Purchase History',
+            referEarnView: 'Elite Referral Program',
+            levelUsersView: 'Level Users',
+            aiTradingStatusView: 'AI Trading Status',
+            myTradePowerView: 'My Trade Power',
+            introductionView: 'Company Profile',
+            withdrawalView: 'Request Withdrawal',
+            dailyEarningHistoryView: 'Daily Earning History',
+            weekendEarnView: 'WEEKEND EARN FAST',
+            weekendEarnHistoryView: 'Weekend Earn History'
         };
+        let currentPage = 'dashboardView';
+        const views = {};
         const itemsPerPage = 10;
         let withdrawalHistoryCurrentPage = 1;
         let buyTPHistoryCurrentPage = 1;
         let dailyEarningHistoryCurrentPage = 1;
-        let weekendEarnHistoryCurrentPage = 1; 
-
-        // 🟢 4. Telegram Global Variables
-        let TG_USER_ID = '000000000'; // Fallback
-        let TG_USERNAME = 'User';      // Fallback
-        
-        // ✅ 🎯 यहाँ आपके बॉट का नाम बदला गया है!
-        const TELEGRAM_BOT_USERNAME = 'AproveDappBot'; 
-        
+        let weekendEarnHistoryCurrentPage = 1;
+        let TG_USER_ID = '000000000'; // Default
+        let TG_USERNAME = 'User_000000000';
+        const TELEGRAM_BOT_USERNAME = 'AproveDappBot';
         let TG_INIT_DATA = null;
-        
 
         // --- Mock Data / State Variables (Referral Data Updated) ---
-
-        // Mock state to track weekly investment limit
         let hasInvestedThisWeek = false; 
-        
-        // Mock Available Balance
-        let MOCK_AVAILABLE_BALANCE = 450.75;
-
-        // Mock User TP Packages
+        let MOCK_AVAILABLE_BALANCE = 450.75; 
         const mockUserTPPackages = [
             { id: 1, amount: 100, daysTotal: 20, activeDays: 15, dailyEarning: 0.060 },
             { id: 2, amount: 300, daysTotal: 20, activeDays: 20, dailyEarning: 0.065 }, // Expired
             { id: 3, amount: 1000, daysTotal: 20, activeDays: 5, dailyEarning: 0.070 }
         ];
 
-        // Utility to generate mock data
         function generateMockData(count, factory) {
             const data = [];
             for (let i = 1; i <= count; i++) {
@@ -690,431 +704,439 @@
             return data;
         }
 
-        // 25 Mock Withdrawal History Entries
         const mockWithdrawalHistory = generateMockData(25, (i) => ({
             id: i,
             amount: [25, 50, 100, 200][i % 4] + (Math.floor(Math.random() * 5) + 1),
             date: `2025-11-${String(30 - i).padStart(2, '0')}`,
-            txnHash: i % 3 === 0 ? 'Processing...' : `0xABCDEF${String(1000 + i)}...`,
-            status: i % 3 === 0 ? 'Processing' : 'Completed'
-        })).sort((a, b) => b.id - a.id);
+            status: i % 5 === 0 ? 'Pending' : 'Completed',
+            txn: i % 5 === 0 ? 'TBD' : `0x${Math.random().toString(16).slice(2, 10)}...`
+        }));
 
-        // ROI Tiers definition (from highest to lowest threshold)
-        const roiTiers = [
-            { threshold: 3000, rate: 0.070, label: '7.0%' },
-            { threshold: 300, rate: 0.065, label: '6.5%' },
-            { threshold: 20, rate: 0.060, label: '6.0%' },
-            { threshold: 0, rate: 0.055, label: '5.5%' }
-        ];
-
-        function getRoiDetails(amount) {
-            const tier = roiTiers.find(t => amount >= t.threshold) || roiTiers[roiTiers.length - 1];
-            return {
-                rate: tier.rate,
-                label: tier.label,
-                dailyEarning: (amount * tier.rate).toFixed(4)
-            };
-        }
-
-        // 🟢 5. Mock Referral Data को सरल किया गया (usersDetail हटाया गया)
-        const mockReferralData = [
-            { level: 1, users: 12, deposited: 5200, earnings: 52.00, commissionRate: '10%' },
-            { level: 2, users: 45, deposited: 15500, earnings: 155.00, commissionRate: '5%' },
-            { level: 3, users: 120, deposited: 32000, earnings: 320.00, commissionRate: '3%' },
-            { level: 4, users: 200, deposited: 45000, earnings: 450.00, commissionRate: '2%' },
-            { level: 5, users: 300, deposited: 50000, earnings: 350.00, commissionRate: '1%' },
-            { level: 6, users: 400, deposited: 60000, earnings: 0.00, commissionRate: '0.5%' }
-        ];
-
-        // Mock AI Trading History (10 entries for cleaner view)
-        const mockAITradingHistory = [
-            { pair: 'EUR/USD', position: 'Long', leverage: '50X', entry: 1.0725, execute: 1.0730, profit: 0.45, time: '2025-11-12 10:05:30Z' },
-            { pair: 'USD/JPY', position: 'Short', leverage: '100X', entry: 151.12, execute: 150.98, profit: 1.20, time: '2025-11-12 09:55:00Z' },
-            { pair: 'GBP/USD', position: 'Long', leverage: '75X', entry: 1.2450, execute: 1.2458, profit: 0.65, time: '2025-11-12 09:40:00Z' },
-            { pair: 'AUD/USD', position: 'Short', leverage: '20X', entry: 0.6522, execute: 0.6521, profit: 0.15, time: '2025-11-12 09:25:30Z' },
-            { pair: 'EUR/GBP', position: 'Long', leverage: '50X', entry: 0.8550, execute: 0.8548, profit: -0.20, time: '2025-11-12 09:10:15Z' }, // Loss
-            { pair: 'NZD/USD', position: 'Long', leverage: '100X', entry: 0.6055, execute: 0.6062, profit: 0.75, time: '2025-11-12 08:55:00Z' },
-            { pair: 'XAU/USD', position: 'Short', leverage: '50X', entry: 1980.50, execute: 1978.90, profit: 1.50, time: '2025-11-12 08:40:40Z' },
-            { pair: 'USD/CAD', position: 'Long', leverage: '75X', entry: 1.3650, execute: 1.3653, profit: 0.30, time: '2025-11-12 08:25:10Z' },
-            { pair: 'EUR/JPY', position: 'Short', leverage: '50X', entry: 161.20, execute: 161.25, profit: -0.50, time: '2025-11-12 08:10:00Z' }, // Loss
-            { pair: 'GBP/JPY', position: 'Long', leverage: '100X', entry: 188.45, execute: 188.60, profit: 0.95, time: '2025-11-12 07:55:30Z' }
-        ].slice(0, 10); 
-
-        // 25 Mock Buy TP History Entries
-        const mockBuyTPHistory = generateMockData(25, (i) => {
-            const amount = [50, 100, 300, 500, 1000, 3500, 50][i % 7] + (Math.floor(Math.random() * 10) + 1);
-            const roi = getRoiDetails(amount);
+        const mockBuyTPHistory = generateMockData(30, (i) => {
+            const amount = [10, 50, 100, 300, 1000][i % 5];
+            const date = `2025-10-${String(30 - i).padStart(2, '0')}`;
+            const dailyEarning = getRoiDetails(amount).rate;
             return {
                 id: i,
                 amount: amount,
-                date: `2025-10-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`,
-                ...roi
+                date: date,
+                dailyEarning: dailyEarning
             };
-        }).sort((a, b) => b.id - a.id);
+        });
 
-        // 25 Mock Daily Earning Entries
-        const mockDailyEarningHistory = generateMockData(25, (i) => ({
-            id: i,
-            date: `2025-11-${String(30 - i).padStart(2, '0')}`,
-            amount: (0.02 + Math.random() * 0.05).toFixed(4),
-            rate: (5.5 + Math.random() * 0.5).toFixed(2) + '%'
-        })).sort((a, b) => b.id - a.id);
+        const mockDailyEarningHistory = generateMockData(45, (i) => {
+            const rate = [0.055, 0.060, 0.065, 0.070][i % 4];
+            const date = `2025-11-${String(30 - i).padStart(2, '0')}`;
+            const totalTP = [500, 1000, 2000][i % 3];
+            return {
+                id: i,
+                date: date,
+                earning: (totalTP * rate / 20).toFixed(4), 
+                rate: (rate * 100).toFixed(1) + '%'
+            };
+        });
 
-        // Mock Weekend Earn History
-        const mockWeekendEarnHistory = generateMockData(15, (i) => {
-            const amount = [100, 150, 200, 500][i % 4] + (Math.floor(Math.random() * 5));
-            const returnAmount = amount * 0.30;
-            const status = i < 3 ? 'Completed' : 'Processing';
+        const mockWeekendEarnHistory = generateMockData(10, (i) => {
+            const amount = [100, 200, 500][i % 3];
+            const returnAmount = (amount * 0.3).toFixed(2);
+            const status = i % 3 === 0 ? 'Pending' : 'Completed';
             return {
                 id: i,
                 amount: amount,
-                date: `2025-11-${String(30 - i).padStart(2, '0')} ${String(8 + i % 12).padStart(2, '0')}:30`,
-                returnAmount: returnAmount,
+                returnAmount: parseFloat(returnAmount),
+                date: `2025-11-${String(15 - i * 2).padStart(2, '0')} 18:00:00`,
                 status: status
             };
-        }).sort((a, b) => b.id - a.id);
-
-
-        // --- Pagination Logic (Reusable) ---
-        function renderPaginationControls(totalItems, itemsPerPage, currentPage, targetViewId, paginationContainerId, setPageFn) {
-            const container = document.getElementById(paginationContainerId);
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
-            container.innerHTML = '';
-
-            if (totalPages <= 1) return;
-
-            const maxButtons = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-            if (endPage - startPage + 1 < maxButtons) {
-                startPage = Math.max(1, endPage - maxButtons + 1);
-            }
-
-            // Previous Button
-            let prevButton = document.createElement('button');
-            prevButton.className = 'pagination-button bg-gray-200 text-gray-700';
-            prevButton.disabled = currentPage === 1;
-            prevButton.innerHTML = '<i data-lucide="chevron-left" class="w-4 h-4"></i>';
-            prevButton.onclick = () => {
-                setPageFn(currentPage - 1);
-                navigateTo(targetViewId);
-            };
-            container.appendChild(prevButton);
-
-            // Page Number Buttons
-            for (let i = startPage; i <= endPage; i++) {
-                let button = document.createElement('button');
-                button.className = `pagination-button ${i === currentPage ? 'active' : 'bg-gray-200 text-gray-700'}`;
-                button.textContent = i;
-                button.onclick = () => {
-                    setPageFn(i);
-                    navigateTo(targetViewId);
-                };
-                container.appendChild(button);
-            }
-
-            // Next Button
-            let nextButton = document.createElement('button');
-            nextButton.className = 'pagination-button bg-gray-200 text-gray-700';
-            nextButton.disabled = currentPage === totalPages;
-            nextButton.innerHTML = '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
-            nextButton.onclick = () => {
-                setPageFn(currentPage + 1);
-                navigateTo(targetViewId);
-            };
-            container.appendChild(nextButton);
-
-            lucide.createIcons();
-        }
-
-        function renderWithdrawalRow(item) {
-            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
-            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
-            return `
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-3 px-4 text-sm font-bold text-gray-800">$${item.amount.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date.split(' ')[0]}</td>
-                    <td class="py-3 px-4 text-xs text-right">
-                        <span class="font-semibold ${statusColor} flex items-center justify-end">
-                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
-                        </span>
-                        <span class="block text-gray-400 text-[10px] truncate w-24 ml-auto">${item.txnHash}</span>
-                    </td>
-                </tr>
-            `;
-        }
-
-        function renderBuyTPRow(item) {
-            return `
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
-                    <td class="py-3 px-4 text-sm font-bold text-gray-800 text-right">$${item.amount.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-xs text-right">
-                        <span class="font-bold text-green-600">$${item.dailyEarning}</span>
-                        <span class="block text-gray-400 text-[10px]">(${item.label})</span>
-                    </td>
-                </tr>
-            `;
-        }
+        });
         
-        function renderDailyEarningRow(item) {
-            return `
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date}</td>
-                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">$${item.amount}</td>
-                    <td class="py-3 px-4 text-xs text-right text-gray-700">${item.rate}</td>
-                </tr>
-            `;
-        }
-
-        function renderWeekendEarnRow(item) {
-            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
-            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
-            const totalReturn = item.amount + item.returnAmount;
-            return `
-                <tr class="border-b border-gray-100 hover:bg-yellow-50">
-                    <td class="py-3 px-4 text-xs font-medium text-gray-600">${item.date.split(' ')[0]}<span class="block text-gray-400 text-[10px]">${item.date.split(' ')[1]}</span></td>
-                    <td class="py-3 px-4 text-sm font-bold text-yellow-800 text-right">$${item.amount.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">
-                        + $${item.returnAmount.toFixed(2)}
-                        <span class="block text-gray-400 text-[10px]">Total: $${totalReturn.toFixed(2)}</span>
-                    </td>
-                    <td class="py-3 px-4 text-xs text-center">
-                        <span class="font-semibold ${statusColor} flex items-center justify-center">
-                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        }
-
-
-        function renderWithdrawalHistory(page) {
-            const body = document.getElementById('withdrawalHistoryBody');
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedItems = mockWithdrawalHistory.slice(startIndex, endIndex);
-
-            body.innerHTML = paginatedItems.map(renderWithdrawalRow).join('');
-
-            renderPaginationControls(
-                mockWithdrawalHistory.length,
-                itemsPerPage,
-                page,
-                'withdrawalView',
-                'withdrawalHistoryPagination',
-                (p) => withdrawalHistoryCurrentPage = p
-            );
-            lucide.createIcons();
-        }
-
-        function renderBuyTPHistory(page) {
-            const body = document.getElementById('buyTPHistoryBody');
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedItems = mockBuyTPHistory.slice(startIndex, endIndex);
-
-            body.innerHTML = paginatedItems.map(renderBuyTPRow).join('');
-
-            renderPaginationControls(
-                mockBuyTPHistory.length,
-                itemsPerPage,
-                page,
-                'buyTPHistoryView',
-                'buyTPHistoryPagination',
-                (p) => buyTPHistoryCurrentPage = p
-            );
-            lucide.createIcons();
-        }
+        const mockReferralData = [
+            { level: 1, commissionRate: '8%', users: 12, deposited: 8500.00, earned: 850.00 },
+            { level: 2, commissionRate: '5%', users: 25, deposited: 12000.00, earned: 450.00 },
+            { level: 3, commissionRate: '3%', users: 40, deposited: 15000.00, earned: 35.00 },
+            { level: 4, commissionRate: '2%', users: 50, deposited: 10000.00, earned: 0.00 },
+            { level: 5, commissionRate: '1%', users: 80, deposited: 20000.00, earned: 0.00 },
+            { level: 6, commissionRate: '0.5%', users: 100, deposited: 30000.00, earned: 0.00 },
+            { level: 7, commissionRate: '0.3%', users: 120, deposited: 40000.00, earned: 0.00 },
+            { level: 8, commissionRate: '0.2%', users: 150, deposited: 50000.00, earned: 0.00 },
+            { level: 9, commissionRate: '0.1%', users: 180, deposited: 60000.00, earned: 0.00 },
+            { level: 10, commissionRate: '0.1%', users: 200, deposited: 70000.00, earned: 0.00 },
+        ];
         
-        function renderDailyEarningHistory(page) {
-            const body = document.getElementById('dailyEarningHistoryBody');
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedItems = mockDailyEarningHistory.slice(startIndex, endIndex);
+        // ====================================================================
+        // --- 1. LIVE DATA CONFIGURATION AND HELPER FUNCTIONS (Updated) ---
+        // ====================================================================
 
-            body.innerHTML = paginatedItems.map(renderDailyEarningRow).join('');
+        let isAITradingLoopRunning = false; 
+        const API_URL = 'https://api.binance.com/api/v3/ticker/24hr';
+        const STORAGE_KEY = 'virtualLeveragedPositions_30min'; 
+        const UPDATE_INTERVAL_MS = 30 * 60 * 1000; 
+        const REFRESH_INTERVAL_MS = 60000; 
 
-            renderPaginationControls(
-                mockDailyEarningHistory.length,
-                itemsPerPage,
-                page,
-                'dailyEarningHistoryView',
-                'dailyEarningHistoryPagination',
-                (p) => dailyEarningHistoryCurrentPage = p
-            );
-            lucide.createIcons();
+        function getRandomEntryPrice(lowPrice, highPrice) {
+            const min = parseFloat(lowPrice);
+            const max = parseFloat(highPrice);
+            // Entry price is set randomly within 30% to 70% range of the 24hr spread
+            const randomFactor = Math.random() * (0.7 - 0.3) + 0.3; 
+            return (min + (max - min) * randomFactor);
         }
 
-        function renderWeekendEarnHistory(page) {
-            const body = document.getElementById('weekendEarnHistoryBody');
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const paginatedItems = mockWeekendEarnHistory.slice(startIndex, endIndex);
-
-            body.innerHTML = paginatedItems.map(renderWeekendEarnRow).join('');
-
-            renderPaginationControls(
-                mockWeekendEarnHistory.length,
-                itemsPerPage,
-                page,
-                'weekendEarnHistoryView',
-                'weekendEarnHistoryPagination',
-                (p) => weekendEarnHistoryCurrentPage = p
-            );
-            lucide.createIcons();
+        function getRandomLeverage() {
+            // Random leverage between 5 and 30
+            return Math.floor(Math.random() * (30 - 5 + 1)) + 5; 
         }
 
-        function renderAITradingStatus() {
-            const body = document.getElementById('aiTradingHistoryBody');
-            let html = mockAITradingHistory.map(item => {
-                const isProfit = item.profit >= 0;
-                const profitColor = isProfit ? 'text-green-500 bg-green-50' : 'text-red-500 bg-red-50';
-                const sideColor = item.position === 'Long' ? 'text-green-600' : 'text-red-600';
-
-                return `
-                    <tr class="border-b border-gray-700 hover:bg-gray-800 transition">
-                        <td class="py-3 px-2 text-xs font-bold text-white">
-                            ${item.pair}
-                            <span class="block text-[10px] font-semibold ${sideColor}">${item.position}</span>
-                        </td>
-                        <td class="py-3 px-2 text-xs font-semibold text-gray-600">${item.leverage}</td>
-                        <td class="py-3 px-2 text-xs text-right">
-                            <span class="block font-bold text-gray-800">${item.entry.toFixed(4)}</span>
-                            <span class="block text-gray-400 text-[10px]">${item.execute.toFixed(4)}</span>
-                        </td>
-                        <td class="py-3 px-2 text-xs text-right">
-                            <span class="font-extrabold ${profitColor} p-1 rounded-md inline-block">
-                                ${isProfit ? '+' : ''}${item.profit.toFixed(2)}%
-                            </span>
-                        </td>
-                        <td class="py-3 px-2 text-xs text-gray-500 w-16">${item.time.split(' ')[1].slice(0, 5)}</td>
-                    </tr>
-                `;
-            }).join('');
-            body.innerHTML = html;
+        function calculateBasePNL(currentPrice, entryPrice, tradeType) {
+            let pnl;
+            if (tradeType === 'LONG') {
+                pnl = ((currentPrice - entryPrice) / entryPrice) * 100;
+            } else { // SHORT
+                pnl = ((entryPrice - currentPrice) / entryPrice) * 100;
+            }
+            return pnl;
         }
 
-        function renderMyTradePower() {
-            const list = document.getElementById('myTPPackagesList');
-            let html = mockUserTPPackages.map(item => {
-                const daysRemaining = item.daysTotal - item.activeDays;
-                const percentage = Math.min(100, (item.activeDays / item.daysTotal) * 100);
-                const progressColor = percentage < 75 ? 'bg-green-500' : 'bg-red-500';
-                const statusLabel = daysRemaining > 0 ? `${daysRemaining} Days Left` : 'Expired!';
-                const statusColor = daysRemaining > 0 ? 'text-green-600' : 'text-red-600';
-                const cardBorder = daysRemaining > 0 ? 'border-green-300' : 'border-red-300';
+        function getProfitableTradeType(currentPrice, entryPrice) {
+            // If current price > entry, LONG is profitable
+            if (currentPrice > entryPrice) {
+                return 'LONG';
+            } else { // If current price < entry, SHORT is profitable
+                return 'SHORT';
+            }
+        }
 
-                // Calculate estimated daily return
-                const dailyReturn = (item.amount * item.dailyEarning).toFixed(4);
 
-                return `
-                    <div class="bg-white p-5 rounded-2xl shadow-xl border-t-8 ${cardBorder} space-y-3">
-                        <div class="flex justify-between items-center border-b pb-3">
-                            <h3 class="text-2xl font-extrabold text-gray-800">
-                                $${item.amount.toLocaleString()} <span class="text-sm font-medium text-gray-500">TP Package</span>
-                            </h3>
-                            <span class="font-bold text-lg ${statusColor} bg-gray-100 px-3 py-1 rounded-full">${statusLabel}</span>
-                        </div>
-                        <div class="flex justify-between items-center text-sm font-medium">
-                            <div class="flex items-center text-gray-700">
-                                <i data-lucide="zap" class="w-4 h-4 mr-1 text-green-500"></i> Daily ROI: 
-                                <span class="font-bold text-green-600 ml-1">${(item.dailyEarning * 100).toFixed(1)}%</span>
-                            </div>
-                            <div class="flex items-center text-gray-700">
-                                <i data-lucide="dollar-sign" class="w-4 h-4 mr-1 text-purple-500"></i> Daily \$ Return: 
-                                <span class="font-bold text-purple-600 ml-1">$${dailyReturn}</span>
-                            </div>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5">
-                            <div class="${progressColor} h-2.5 rounded-full" style="width: ${percentage}%"></div>
-                        </div>
-                        <div class="flex justify-between text-xs text-gray-500">
-                            <span>Started: ${item.activeDays} days ago</span>
-                            <span>Total Duration: ${item.daysTotal} days</span>
-                        </div>
+        // ====================================================================
+        // --- 2. LIVE DATA FETCH AND CALCULATION CORE (Updated to show only profit) ---
+        // ====================================================================
+
+        async function fetchAndCalculatePNL() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                // Filter for top 15 USDT pairs by quote volume
+                const pairsToTrack = data
+                    .filter(pair => pair.symbol.endsWith('USDT'))
+                    .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+                    .slice(0, 15);
+
+                let positionData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+                const now = new Date().getTime();
+                const updatedPositionData = {};
+                
+                // Update/Generate new virtual entry positions every 30 minutes
+                pairsToTrack.forEach(pair => {
+                    const symbol = pair.symbol;
+                    const lowPrice = parseFloat(pair.lowPrice);
+                    const highPrice = parseFloat(pair.highPrice);
+
+                    if (positionData[symbol] && (now - positionData[symbol].timestamp < UPDATE_INTERVAL_MS)) {
+                        updatedPositionData[symbol] = positionData[symbol];
+                    } else {
+                        updatedPositionData[symbol] = {
+                            entryPrice: getRandomEntryPrice(lowPrice, highPrice),
+                            leverage: getRandomLeverage(),
+                            timestamp: now,
+                            time_string: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' }) + ' UTC'
+                        };
+                    }
+                });
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedPositionData));
+                positionData = updatedPositionData;
+
+                // Calculate PNL based on current price and stored entry price
+                const calculatedResults = pairsToTrack.map((pair, index) => {
+                    const lastPrice = parseFloat(pair.lastPrice);
+                    const entryPrice = positionData[pair.symbol].entryPrice;
+                    const leverage = positionData[pair.symbol].leverage;
+                    const time_string = positionData[pair.symbol].time_string;
+                    
+                    // 1. Determine the trade type that is PROFITABLE
+                    const profitableTradeType = getProfitableTradeType(lastPrice, entryPrice);
+                    
+                    // 2. Calculate the base PNL (which will be positive)
+                    const basePNL = calculateBasePNL(lastPrice, entryPrice, profitableTradeType);
+                    
+                    // 3. Calculate the leveraged PNL (guaranteed positive)
+                    // Added a slight random positive multiplier (1x to 2x) for more dynamic profit
+                    const finalLeveragedPNL = basePNL * leverage * (Math.random() + 1); 
+                    
+                    const symbol = pair.symbol.replace('USDT', '/USDT');
+
+                    return {
+                        id: index + 1,
+                        symbol: symbol, 
+                        currentPrice: lastPrice.toFixed(4),
+                        entryPrice: entryPrice.toFixed(4),
+                        position: profitableTradeType, // LONG or SHORT
+                        leverage: leverage,
+                        leveragedPNL: finalLeveragedPNL.toFixed(2), 
+                        time: time_string
+                    };
+                });
+
+                // Filter out any potential zero or near-zero results (shouldn't happen with the current logic, but as a safeguard)
+                return calculatedResults.filter(item => parseFloat(item.leveragedPNL) > 0.05).slice(0, 10); 
+
+            } catch (error) {
+                console.error("Error fetching or calculating data:", error);
+                return [];
+            }
+        }
+
+
+        // ====================================================================
+        // --- Core Functions (General) ---
+        // ====================================================================
+
+        function showMessage(title, message, type = 'info') {
+            const container = document.getElementById('message-container');
+            const colorMap = {
+                'success': 'bg-green-500',
+                'error': 'bg-red-500',
+                'info': 'bg-blue-500',
+                'warning': 'bg-yellow-500'
+            };
+
+            const iconMap = {
+                'success': 'check-circle',
+                'error': 'x-circle',
+                'info': 'info',
+                'warning': 'alert-triangle'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-20 left-1/2 -translate-x-1/2 mb-4 w-11/12 max-w-sm ${colorMap[type]} text-white p-4 rounded-xl shadow-2xl transition-all duration-500 ease-out opacity-0 translate-y-4 pointer-events-auto`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <i data-lucide="${iconMap[type]}" class="w-5 h-5 mr-3 flex-shrink-0"></i>
+                    <div>
+                        <p class="font-bold text-lg">${title}</p>
+                        <p class="text-sm">${message}</p>
                     </div>
-                `;
-            }).join('');
+                </div>
+            `;
             
-            if (mockUserTPPackages.length === 0) {
-                 html = `<p class="text-center py-10 text-gray-500 font-semibold">You do not have any active Trade Power packages. Invest now!</p>`;
-            }
-            
-            list.innerHTML = html;
+            container.appendChild(toast);
             lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-0', 'translate-y-4');
+                toast.classList.add('opacity-100', 'translate-y-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred(type === 'success' ? 'success' : (type === 'error' ? 'error' : 'warning'));
+            }
         }
 
-        // --- Buy TP Logic ---
-        const usdtInput = document.getElementById('usdtAmount');
-        const buyButton = document.getElementById('buyNowButton');
-        const rateDisplay = document.getElementById('dailyRateDisplay');
-        const amountDisplay = document.getElementById('dailyReturnAmount');
+        function getRoiDetails(amount) {
+            const investment = parseFloat(amount);
+            if (isNaN(investment)) return { rate: 0, label: '0%', factor: 0 };
+            
+            if (investment >= 3000) {
+                return { rate: 0.070, label: '7.0%', factor: 140 };
+            } else if (investment >= 300) {
+                return { rate: 0.065, label: '6.5%', factor: 130 };
+            } else if (investment >= 20) {
+                return { rate: 0.060, label: '6.0%', factor: 120 };
+            } else if (investment >= 0) {
+                return { rate: 0.055, label: '5.5%', factor: 110 };
+            } else {
+                return { rate: 0, label: '0%', factor: 0 };
+            }
+        }
+
+        const usdtAmountInput = document.getElementById('usdtAmount');
+        const dailyRateDisplay = document.getElementById('dailyRateDisplay');
+        const dailyReturnAmount = document.getElementById('dailyReturnAmount');
+        const buyNowButton = document.getElementById('buyNowButton');
+        const MIN_INVEST = 10;
 
         function calculateReturn(usdtValue) {
             const amount = parseFloat(usdtValue);
-            const minInvest = 10;
-            
-            if (isNaN(amount) || amount < minInvest) {
-                rateDisplay.textContent = '0%';
-                amountDisplay.textContent = '0.00 USDT';
-                buyButton.disabled = true;
-                buyButton.classList.add('opacity-50', 'cursor-not-allowed');
-                buyButton.classList.remove('hover:opacity-95');
-                buyButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Min ${minInvest} USDT)`;
+            const roi = getRoiDetails(amount);
+
+            if (isNaN(amount) || amount < MIN_INVEST) {
+                dailyRateDisplay.textContent = '0%';
+                dailyReturnAmount.textContent = '0.00 USDT';
+                buyNowButton.disabled = true;
+                buyNowButton.classList.add('opacity-50', 'cursor-not-allowed');
+                buyNowButton.classList.remove('hover:opacity-95');
+                buyNowButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Min ${MIN_INVEST} USDT)`;
                 lucide.createIcons();
                 return;
             }
 
-            const tier = roiTiers.find(t => amount >= t.threshold);
-            const rate = tier ? tier.rate : roiTiers[roiTiers.length - 1].rate;
-            const rateLabel = tier ? tier.label : '5.5%';
-            const dailyReturn = amount * rate;
-            
-            rateDisplay.textContent = rateLabel;
-            amountDisplay.textContent = `${dailyReturn.toFixed(4)} USDT`;
-            buyButton.disabled = false;
-            buyButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            buyButton.classList.add('hover:opacity-95');
-            buyButton.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 mr-2 inline-block"></i> Buy Now (Open Gateway)';
+            const dailyReturn = amount * (roi.rate / 20); 
+            dailyRateDisplay.textContent = roi.label;
+            dailyReturnAmount.textContent = `${dailyReturn.toFixed(4)} USDT`;
+            buyNowButton.disabled = false;
+            buyNowButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            buyNowButton.classList.add('hover:opacity-95');
+            buyNowButton.innerHTML = `<i data-lucide="zap" class="w-5 h-5 mr-2 inline-block"></i> Confirm Purchase (${amount.toFixed(2)} USDT)`;
             lucide.createIcons();
         }
 
         function simulateGateway() {
-            const amount = usdtInput.value;
-            if (parseFloat(amount) < 10) {
-                showMessage('Investment Error', 'Minimum investment is 10 USDT.');
+            const amount = parseFloat(usdtAmountInput.value);
+            if (isNaN(amount) || amount < MIN_INVEST) {
+                showMessage('Error', `Minimum investment is ${MIN_INVEST} USDT.`, 'error');
                 return;
             }
 
-            // Simulate history update
-            const roi = getRoiDetails(parseFloat(amount));
-            const newEntry = {
-                id: mockBuyTPHistory.length + 1,
-                amount: parseFloat(amount),
-                date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-                ...roi
-            };
-            mockBuyTPHistory.unshift(newEntry);
-            
-            // Clear form and navigate back to dashboard
-            usdtInput.value = '';
-            calculateReturn(0);
+            showMessage('Processing...', 'Redirecting to payment gateway...', 'info');
 
-            // Update user's TP
-            const newTP = parseFloat(amount) / 200; // Mock calculation
-            showMessage('TP Purchased!', `Successfully bought ${newTP.toFixed(2)} TP with ${parseFloat(amount).toFixed(2)} USDT! Your new daily ROI is ${roi.label}.`);
-            navigateTo('dashboardView');
+            setTimeout(() => {
+                const roi = getRoiDetails(amount);
+                mockBuyTPHistory.unshift({ 
+                    id: mockBuyTPHistory.length + 1,
+                    amount: amount,
+                    date: new Date().toISOString().split('T')[0],
+                    dailyEarning: roi.rate
+                });
+                
+                const newTPPackage = { 
+                    id: mockUserTPPackages.length + 1, 
+                    amount: amount, 
+                    daysTotal: 20, 
+                    activeDays: 0, 
+                    dailyEarning: roi.rate 
+                };
+                mockUserTPPackages.push(newTPPackage);
+
+                usdtAmountInput.value = '';
+                calculateReturn(0); 
+
+                const newTP = amount / 200; 
+                showMessage('TP Purchased!', `Successfully bought ${newTP.toFixed(2)} TP with ${amount.toFixed(2)} USDT! Your new daily ROI is ${roi.label}.`, 'success');
+                navigateTo('dashboardView');
+            }, 2000);
         }
 
-        // --- Weekend Earn Logic (UPDATED) ---
+        const withdrawalAmountInput = document.getElementById('withdrawalAmount');
+        const withdrawalAddressInput = document.getElementById('withdrawalAddress');
+        const netReceiveAmount = document.getElementById('netReceiveAmount');
+        const withdrawalFee = document.getElementById('withdrawalFee');
+        const withdrawButton = document.getElementById('withdrawButton');
+        const MIN_WITHDRAWAL = 1;
+        const WITHDRAWAL_FEE_RATE = 0.05; 
+
+        function calculateNetWithdrawal(usdtValue) {
+            const amount = parseFloat(usdtValue);
+            
+            if (isNaN(amount) || amount < MIN_WITHDRAWAL || amount > MOCK_AVAILABLE_BALANCE) {
+                withdrawalFee.textContent = '0.00 USDT';
+                netReceiveAmount.textContent = '0.00 USDT';
+                withdrawButton.disabled = true;
+                withdrawButton.classList.add('opacity-50', 'cursor-not-allowed');
+                withdrawButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Confirm Withdrawal`;
+                return;
+            }
+
+            const fee = amount * WITHDRAWAL_FEE_RATE;
+            const netReceive = amount - fee;
+
+            withdrawalFee.textContent = `${fee.toFixed(2)} USDT`;
+            netReceiveAmount.textContent = `${netReceive.toFixed(2)} USDT`;
+            withdrawButton.disabled = false;
+            withdrawButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            withdrawButton.innerHTML = `<i data-lucide="wallet" class="w-5 h-5 mr-2 inline-block"></i> Confirm Withdrawal (${netReceive.toFixed(2)} USDT)`;
+            lucide.createIcons();
+        }
+
+        function simulateWithdrawal() {
+            const amount = parseFloat(withdrawalAmountInput.value);
+            const address = withdrawalAddressInput.value.trim();
+
+            if (isNaN(amount) || amount < MIN_WITHDRAWAL) {
+                showMessage('Error', `Minimum withdrawal amount is ${MIN_WITHDRAWAL} USDT.`, 'error');
+                return;
+            }
+            if (amount > MOCK_AVAILABLE_BALANCE) {
+                showMessage('Error', `Insufficient balance. Available: ${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT.`, 'error');
+                return;
+            }
+            if (address.length < 30) {
+                showMessage('Error', 'Please enter a valid USDT TRC20 address.', 'error');
+                return;
+            }
+
+            const fee = amount * WITHDRAWAL_FEE_RATE;
+            const netReceive = amount - fee;
+            
+            MOCK_AVAILABLE_BALANCE -= amount;
+            
+            mockWithdrawalHistory.unshift({
+                id: mockWithdrawalHistory.length + 1,
+                amount: netReceive,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Pending',
+                txn: 'TBD'
+            });
+
+            withdrawalAmountInput.value = '';
+            withdrawalAddressInput.value = '';
+            calculateNetWithdrawal(0);
+            document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600').textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+            renderWithdrawalHistory(1);
+
+            showMessage('Withdrawal Request Sent!', `You requested ${netReceive.toFixed(2)} USDT. Processing...`, 'success');
+        }
+
+        function simulateReinvest(amount) {
+            const minReinvest = 10;
+            const newBalance = 0;
+            if (amount < minReinvest) {
+                showMessage('Re-invest Error', `Minimum re-investment amount is ${minReinvest} USDT. Available: ${amount.toFixed(2)} USDT.`, 'error');
+                return;
+            }
+            
+            const roi = getRoiDetails(amount); 
+            
+            const newTPPackage = { 
+                id: mockUserTPPackages.length + 1, 
+                amount: amount, 
+                daysTotal: 20, 
+                activeDays: 0, 
+                dailyEarning: roi.rate 
+            };
+            mockUserTPPackages.push(newTPPackage);
+
+            MOCK_AVAILABLE_BALANCE = newBalance;
+            
+            document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600').textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+            
+            const reinvestBtn = document.getElementById('reinvestButton');
+            if (reinvestBtn) {
+                reinvestBtn.disabled = true;
+                reinvestBtn.classList.add('opacity-50');
+            }
+
+            showMessage(
+                'TP Re-investment Successful', 
+                `Successfully re-invested ${amount.toFixed(2)} USDT into Trade Power (TP). Your daily earnings will increase!`,
+                'success'
+            );
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
         const weekendAmountInput = document.getElementById('weekendAmount');
         const weekendBuyButton = document.getElementById('weekendBuyButton');
         const weekendRateDisplay = document.getElementById('weekendRateDisplay');
         const weekendReturnAmount = document.getElementById('weekendReturnAmount');
-        const WEEKEND_RATE = 0.30; // 30% return
-        const WEEKEND_MIN_INVEST = 100; 
+        const WEEKEND_RATE = 0.30;
+        const WEEKEND_MIN_INVEST = 100;
         const weekendDashboardButton = document.getElementById('weekendDashboardButton');
         const restrictionText = document.getElementById('weekendRestrictionText');
 
@@ -1122,8 +1144,7 @@
             const amount = parseFloat(usdtValue);
             const minInvest = WEEKEND_MIN_INVEST;
             
-            if (hasInvestedThisWeek) {
-                // If already invested, prevent calculation/button activation
+            if (hasInvestedThisWeek) { 
                 weekendRateDisplay.textContent = '30%';
                 weekendReturnAmount.textContent = '0.00 USDT';
                 weekendBuyButton.disabled = true;
@@ -1136,7 +1157,6 @@
                 weekendBuyButton.disabled = true;
                 weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
                 weekendBuyButton.classList.remove('hover:opacity-95');
-                // Updated button text
                 weekendBuyButton.innerHTML = `<i data-lucide="lock" class="w-5 h-5 mr-2 inline-block"></i> Invest Now (Min ${minInvest} USDT)`;
                 lucide.createIcons();
                 return;
@@ -1153,60 +1173,63 @@
 
         function simulateWeekendGateway() {
             const amount = parseFloat(weekendAmountInput.value);
-            if (isNaN(amount) || amount < WEEKEND_MIN_INVEST || hasInvestedThisWeek) {
-                showMessage('Investment Error', `Minimum investment is ${WEEKEND_MIN_INVEST} USDT and can only be done once per week.`);
+            const minInvest = WEEKEND_MIN_INVEST;
+
+            if (isNaN(amount) || amount < minInvest) {
+                showMessage('Error', `Minimum investment is ${minInvest} USDT.`, 'error');
+                return;
+            }
+            if (hasInvestedThisWeek) {
+                showMessage('Error', 'You have already invested this week.', 'error');
                 return;
             }
 
-            const returnAmount = amount * WEEKEND_RATE;
-            const totalReturn = amount + returnAmount;
+            showMessage('Processing...', 'Redirecting to payment gateway for Weekend Earn...', 'info');
 
-            // 1. Update state
-            hasInvestedThisWeek = true;
-            
-            // 2. Add to history
-            const newEntry = {
-                id: mockWeekendEarnHistory.length + 1,
-                amount: amount,
-                date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-                returnAmount: returnAmount,
-                status: 'Processing'
-            };
-            mockWeekendEarnHistory.unshift(newEntry);
+            setTimeout(() => {
+                const totalReturn = amount * WEEKEND_RATE;
+                
+                mockWeekendEarnHistory.unshift({ 
+                    id: mockWeekendEarnHistory.length + 1,
+                    amount: amount,
+                    returnAmount: totalReturn,
+                    date: new Date().toISOString().split('T')[0] + ' 18:00:00',
+                    status: 'Pending'
+                });
+                
+                hasInvestedThisWeek = true;
+                localStorage.setItem('hasInvestedThisWeek', 'true');
 
-            // 3. Clear form and navigate back to dashboard/update view
-            weekendAmountInput.value = '';
-            checkWeekendEligibility(); // Apply restrictions
-            navigateTo('dashboardView');
-
-            showMessage(
-                'Weekend Investment Initiated',
-                `Successfully invested ${parseFloat(amount).toFixed(2)} USDT into WEEKEND EARN FAST! You are expected to receive ${totalReturn.toFixed(2)} USDT profit in 48 hours. (Weekly Limit Used)`
-            );
+                weekendAmountInput.value = '';
+                checkWeekendEligibility();
+                
+                showMessage('Investment Successful!', `You invested ${amount.toFixed(2)} USDT. Est. Return: ${totalReturn.toFixed(2)} USDT in 48 hours.`, 'success');
+                navigateTo('weekendEarnHistoryView');
+            }, 2000);
         }
-        
+
         function checkWeekendEligibility() {
-            // Dashboard Button Update
+            const storedState = localStorage.getItem('hasInvestedThisWeek');
+            hasInvestedThisWeek = storedState === 'true'; 
+            const minInvest = WEEKEND_MIN_INVEST;
+
             if (weekendDashboardButton) {
                 if (hasInvestedThisWeek) {
-                    weekendDashboardButton.classList.add('opacity-50', 'cursor-not-allowed');
-                    weekendDashboardButton.classList.remove('hover:bg-yellow-500');
-                    weekendDashboardButton.textContent = 'LIMIT USED';
                     weekendDashboardButton.setAttribute('disabled', 'true');
+                    weekendDashboardButton.textContent = 'INVESTED';
+                    weekendDashboardButton.classList.remove('bg-yellow-400', 'hover:bg-yellow-500');
+                    weekendDashboardButton.classList.add('bg-gray-400', 'cursor-not-allowed');
                 } else {
-                    weekendDashboardButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                    weekendDashboardButton.classList.add('hover:bg-yellow-500');
-                    weekendDashboardButton.textContent = "LET'S GO";
                     weekendDashboardButton.removeAttribute('disabled');
+                    weekendDashboardButton.textContent = "LET'S GO";
+                    weekendDashboardButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    weekendDashboardButton.classList.add('bg-yellow-400', 'hover:bg-yellow-500');
                 }
             }
 
-            // Weekend View Update
-            if (weekendAmountInput && restrictionText) {
-                const minInvest = WEEKEND_MIN_INVEST;
+            if (currentPage === 'weekendEarnView') {
                 if (hasInvestedThisWeek) {
                     weekendAmountInput.setAttribute('disabled', 'true');
-                    weekendAmountInput.value = '';
                     weekendAmountInput.placeholder = 'Already invested this week';
                     weekendBuyButton.setAttribute('disabled', 'true');
                     weekendBuyButton.classList.add('opacity-50', 'cursor-not-allowed');
@@ -1217,14 +1240,13 @@
                     weekendAmountInput.removeAttribute('disabled');
                     weekendAmountInput.placeholder = `Min. ${minInvest} USDT`;
                     restrictionText.innerHTML = `Invest for a short-term, high-return opportunity. (Minimum ${minInvest} USDT, **Once per week**)`;
-                    // Reset button/calculation state
                     calculateWeekendReturn(weekendAmountInput.value);
                 }
                 lucide.createIcons();
             }
         }
 
-        // --- Referral Logic ---
+
         const referralTableBody = document.getElementById('referralTableBody');
         const levelUsersTitle = document.getElementById('levelUsersTitle');
         const levelUsersList = document.getElementById('levelUsersList');
@@ -1233,250 +1255,454 @@
         function populateReferralTable() {
             let html = '';
             mockReferralData.forEach(data => {
-                const isHighlighted = data.level === 1; // Highlight Level 1 only
+                const isHighlighted = data.level === 1;
                 html += `
                     <tr class="border-b border-gray-100 ${isHighlighted ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'}">
                         <td class="py-3 px-4 text-xs font-bold text-gray-800">${data.level} <span class="block text-gray-500 text-[10px]">${data.commissionRate} Comm.</span></td>
-                        <td class="py-3 px-4 text-xs text-center font-medium text-gray-600">${data.users + (parseInt(TG_USER_ID.slice(-1)) || 0)}</td>
+                        <td class="py-3 px-4 text-xs text-center font-medium text-gray-600">${data.users + (parseInt(TG_USER_ID.slice(-3)) % 10)}</td>
                         <td class="py-3 px-4 text-xs text-right font-medium text-gray-600">$${data.deposited.toLocaleString()}</td>
-                        <td class="py-3 px-4 text-xs text-right font-bold text-green-600">$${data.earnings.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-xs text-right font-bold text-green-600">$${data.earned.toLocaleString()}</td>
                         <td class="py-3 px-4 text-xs text-center">
-                            <button onclick="showLevelUsers(${data.level})" class="text-blue-500 hover:text-blue-700 text-xs font-semibold px-2 py-1 rounded-full border border-blue-200 hover:bg-blue-50 transition">
-                                Preview (${data.users + (parseInt(TG_USER_ID.slice(-1)) || 0)})
-                            </button>
+                            <button onclick="navigateTo('levelUsersView', ${data.level})" class="text-blue-500 hover:text-blue-700 font-semibold">View</button>
                         </td>
                     </tr>
                 `;
             });
             referralTableBody.innerHTML = html;
-
-            // ✅ 7. Referral Link को Bot Link से अपडेट करें
-            if (referralLinkInput) {
-                referralLinkInput.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${TG_USER_ID}`;
-            }
+            lucide.createIcons();
         }
 
-        function copyReferralLink() {
-            const linkInput = document.getElementById('referralLink');
-            linkInput.select();
-            document.execCommand('copy');
-            showMessage('Success!', 'Your Referral link has been copied to the clipboard.');
-            
-            // 🟢 8. Telegram Web App को कॉपी फ़ीडबैक दें
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-            }
-        }
-
-        // ✅ 9. showLevelUsers फ़ंक्शन को पूरी तरह से अपडेट किया गया है
         function showLevelUsers(level) {
-            const levelData = mockReferralData.find(d => d.level === level);
-            if (!levelData) return;
-
-            levelUsersTitle.innerHTML = `<i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level ${level} (लेवल ${level} के उपयोगकर्ता)`;
+            levelUsersTitle.innerHTML = `<i data-lucide="users" class="w-6 h-6 mr-2 text-blue-500"></i> Users in Level ${level}`;
             
-            // Total users in this level (mocked based on initial count + random from ID)
-            const totalUsers = levelData.users + (parseInt(TG_USER_ID.slice(-1)) || 0);
+            let usersHtml = `<p class="text-sm font-semibold text-gray-700">Total Users: ${mockReferralData[level - 1].users + (parseInt(TG_USER_ID.slice(-3)) % 10)}</p><hr class="my-3">`;
 
-            let usersHtml = '';
+            const totalUsers = mockReferralData[level - 1].users + (parseInt(TG_USER_ID.slice(-3)) % 10);
+            const mockNames = ['Aman S.', 'Priya K.', 'Vikram R.', 'Neha J.', 'Karan M.', 'Sonal B.', 'Rajesh P.', 'Anil D.', 'Kiran B.', 'Zoya F.'];
             
-            if (totalUsers === 0) {
-                usersHtml = `<p class="text-center py-10 text-gray-500 font-semibold">No active user details to display for this level yet.</p>`;
-            } else {
-                // Dynamic generation of mock user details to simulate hierarchy
-                const mockNames = ['Aman S.', 'Priya K.', 'Vikram R.', 'Neha J.', 'Karan M.', 'Sonal B.', 'Rajesh P.', 'Anil D.', 'Kiran B.', 'Zoya F.'];
-                
-                // Show max 15 users for performance
-                for (let i = 1; i <= Math.min(totalUsers, 15); i++) { 
-                    const userName = mockNames[(i + level * 2) % mockNames.length];
-                    const deposit = (100 + (i * 50) * Math.random()).toFixed(2);
-                    
-                    let referrerDisplay;
-                    if (level === 1) {
-                        // If Level 1, the referrer is the current user (You).
-                        referrerDisplay = `<p class="text-xs text-blue-500 font-bold">Referred by: You (${TG_USERNAME})</p>`;
-                    } else {
-                        // If Level 2+, the referrer is a mock user from the previous level.
-                        const referrerName = mockNames[(i + level * 3) % mockNames.length] + ' (L' + (level - 1) + ')';
-                        referrerDisplay = `<p class="text-xs text-blue-500 font-bold">Referred by: ${referrerName}</p>`;
-                    }
+            for (let i = 1; i <= Math.min(totalUsers, 15); i++) {
+                const userName = mockNames[(i + level * 2) % mockNames.length];
+                const deposit = (100 + (i * 50) * Math.random()).toFixed(2);
+                let referrerDisplay;
 
-                    usersHtml += `
-                        <div class="p-4 bg-gray-50 rounded-xl shadow-inner flex justify-between items-center border border-gray-200">
-                            <div>
-                                <p class="font-semibold text-gray-800">${userName} (ID: ${1000 + i + level * 100})</p>
-                                ${referrerDisplay}
-                                <p class="text-xs text-gray-500">Joined: 2025-10-${String(i).padStart(2, '0')}</p>
-                            </div>
-                            <span class="font-bold text-lg text-green-600">$${deposit}</span>
-                        </div>
-                    `;
+                if (level === 1) {
+                    referrerDisplay = `<p class="text-xs text-blue-500 font-bold">Referred by: You (${TG_USERNAME})</p>`;
+                } else {
+                    const referrerName = mockNames[(i + level * 3) % mockNames.length] + ' (L' + (level - 1) + ')';
+                    referrerDisplay = `<p class="text-xs text-blue-500 font-bold">Referred by: ${referrerName}</p>`;
                 }
-            }
 
+                usersHtml += `
+                    <div class="p-4 bg-gray-50 rounded-xl shadow-inner flex justify-between items-center border border-gray-200">
+                        <div>
+                            <p class="font-semibold text-gray-800">${userName} (ID: ${1000 + i + level * 100})</p>
+                            ${referrerDisplay}
+                            <p class="text-xs text-gray-500">Joined: 2025-10-${String(i).padStart(2, '0')}</p>
+                        </div>
+                        <span class="font-bold text-lg text-green-600">$${deposit}</span>
+                    </div>
+                `;
+            }
+            
             levelUsersList.innerHTML = usersHtml;
             lucide.createIcons();
             navigateTo('levelUsersView');
         }
 
-        // --- Withdrawal Logic ---
-        const withdrawalAmountInput = document.getElementById('withdrawalAmount');
-
-        function simulateWithdrawal() {
-            const amount = parseFloat(withdrawalAmountInput.value);
-            const minWithdraw = 10;
-            const availableBalance = MOCK_AVAILABLE_BALANCE;
-
-            if (isNaN(amount) || amount < minWithdraw) {
-                showMessage('Withdrawal Error', `Minimum withdrawal amount is ${minWithdraw} USDT.`);
-                return;
-            }
-
-            if (amount > availableBalance) {
-                showMessage('Withdrawal Error', `Insufficient balance. Available: ${availableBalance.toFixed(2)} USDT.`);
-                return;
-            }
-
-            // Simulate fee calculation (1 USDT + 1%)
-            const fee = 1 + (amount * 0.01);
-            const netAmount = amount - fee;
-            
-            // Update mock balance
-            MOCK_AVAILABLE_BALANCE -= amount;
-            document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600').textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
-
-            // Add to mock history
-            const newWithdrawal = { id: mockWithdrawalHistory.length + 1, amount: amount, date: new Date().toISOString().split('T')[0], txnHash: 'Processing...', status: 'Processing' };
-            mockWithdrawalHistory.unshift(newWithdrawal);
-            
-            renderWithdrawalHistory(1); // Re-render first page
-            withdrawalAmountInput.value = ''; // Clear input
-            
-            showMessage('Withdrawal Initiated', `Your request for ${amount.toFixed(2)} USDT (Net: ${netAmount.toFixed(2)} USDT) has been submitted. It is now processing.`);
-            
-            // 🟢 10. Telegram Web App को सक्सेस फ़ीडबैक दें
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-            }
+        function copyReferralLink() {
+            const link = referralLinkInput.value;
+            navigator.clipboard.writeText(link).then(() => {
+                showMessage('Copied!', 'Referral link copied to clipboard.', 'success');
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                showMessage('Error', 'Failed to copy link. Try manually.', 'error');
+            });
         }
 
-        // NEW FUNCTION: Auto-invest all available balance to TP
-        function reinvestAllBalance() {
-            // NOTE: This is a simulation.
-            const amount = MOCK_AVAILABLE_BALANCE;
-            const minReinvest = 10;
-            const newBalance = 0;
 
-            if (amount < minReinvest) {
-                showMessage('Re-invest Error', `Minimum re-investment amount is ${minReinvest} USDT. Available: ${amount.toFixed(2)} USDT.`);
-                return;
+        function renderPaginationControls(totalItems, itemsPerPage, currentPage, targetViewId, paginationContainerId, setPageFn) {
+            const container = document.getElementById(paginationContainerId);
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            container.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            const maxButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            
+            if (endPage - startPage + 1 < maxButtons) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
             }
-            
-            // 1. Simulate TP purchase logic (get ROI details)
-            const roi = getRoiDetails(amount);
-            
-            // 2. Add a new TP package (mocking)
-            const newTPPackage = {
-                id: mockUserTPPackages.length + 1,
-                amount: amount,
-                daysTotal: 20,
-                activeDays: 0,
-                dailyEarning: roi.rate
+
+            let prevButton = document.createElement('button');
+            prevButton.className = 'pagination-button bg-gray-200 text-gray-700';
+            prevButton.disabled = currentPage === 1;
+            prevButton.innerHTML = '<i data-lucide="chevron-left" class="w-4 h-4"></i>';
+            prevButton.onclick = () => {
+                setPageFn(currentPage - 1);
+                navigateTo(targetViewId);
             };
-            mockUserTPPackages.push(newTPPackage);
-            
-            // 3. Update mock balance
-            MOCK_AVAILABLE_BALANCE = newBalance;
-            // Update the display immediately
-            document.querySelector('#withdrawalView .text-3xl.font-extrabold.text-orange-600').textContent = `${MOCK_AVAILABLE_BALANCE.toFixed(2)} USDT`;
+            container.appendChild(prevButton);
 
-            // 4. Disable the button after reinvestment
-            const reinvestBtn = document.getElementById('reinvestButton');
-            if (reinvestBtn) {
-                reinvestBtn.disabled = true;
-                reinvestBtn.classList.add('opacity-50');
+            for (let i = startPage; i <= endPage; i++) {
+                let button = document.createElement('button');
+                button.className = `pagination-button ${i === currentPage ? 'active' : 'bg-gray-200 text-gray-700'}`;
+                button.textContent = i;
+                button.onclick = () => {
+                    setPageFn(i);
+                    navigateTo(targetViewId);
+                };
+                container.appendChild(button);
             }
 
-            showMessage(
-                'TP Re-investment Successful',
-                `Successfully re-invested ${amount.toFixed(2)} USDT into Trade Power (TP). Your daily earnings will increase!`
+            let nextButton = document.createElement('button');
+            nextButton.className = 'pagination-button bg-gray-200 text-gray-700';
+            nextButton.disabled = currentPage === totalPages;
+            nextButton.innerHTML = '<i data-lucide="chevron-right" class="w-4 h-4"></i>';
+            nextButton.onclick = () => {
+                setPageFn(currentPage + 1);
+                navigateTo(targetViewId);
+            };
+            container.appendChild(nextButton);
+            
+            lucide.createIcons();
+        }
+
+        function renderWithdrawalRow(item) {
+            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
+            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'loader';
+            const txnDisplay = item.status === 'Completed' ? item.txn : 'In Progress';
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm font-bold text-red-600 text-right">-$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-xs text-center">
+                        <span class="font-semibold ${statusColor} flex flex-col items-center justify-center">
+                            <i data-lucide="${statusIcon}" class="w-3 h-3 mb-0.5"></i>
+                            ${txnDisplay}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderBuyTPRow(item) {
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">+$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-medium text-purple-600 text-right">${(item.dailyEarning * 100).toFixed(1)}%</td>
+                </tr>
+            `;
+        }
+
+        function renderDailyEarningRow(item) {
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">+$${item.earning}</td>
+                    <td class="py-3 px-4 text-sm font-medium text-purple-600 text-right">${item.rate}</td>
+                </tr>
+            `;
+        }
+
+        function renderWeekendEarnRow(item) {
+            const statusColor = item.status === 'Completed' ? 'text-green-600' : 'text-orange-500';
+            const statusIcon = item.status === 'Completed' ? 'check-circle' : 'clock';
+            const totalReturn = item.amount + item.returnAmount;
+            return `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm text-gray-600">${item.date}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-red-600 text-right">$${item.amount.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-bold text-green-600 text-right">
+                        + $${item.returnAmount.toFixed(2)} <span class="block text-gray-400 text-[10px]">Total: $${totalReturn.toFixed(2)}</span>
+                    </td>
+                    <td class="py-3 px-4 text-xs text-center">
+                        <span class="font-semibold ${statusColor} flex items-center justify-center">
+                            <i data-lucide="${statusIcon}" class="w-3 h-3 mr-1"></i> ${item.status}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderWithdrawalHistory(page) {
+            const body = document.getElementById('withdrawalHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockWithdrawalHistory.slice(startIndex, endIndex);
+            body.innerHTML = paginatedItems.map(renderWithdrawalRow).join('');
+            renderPaginationControls(
+                mockWithdrawalHistory.length,
+                itemsPerPage,
+                page,
+                'withdrawalView',
+                'withdrawalHistoryPagination',
+                (p) => withdrawalHistoryCurrentPage = p
             );
-             // 🟢 11. Telegram Web App को सक्सेस फ़ीडबैक दें
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            lucide.createIcons();
+        }
+
+        function renderBuyTPHistory(page) {
+            const body = document.getElementById('buyTPHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockBuyTPHistory.slice(startIndex, endIndex);
+            body.innerHTML = paginatedItems.map(renderBuyTPRow).join('');
+            renderPaginationControls(
+                mockBuyTPHistory.length,
+                itemsPerPage,
+                page,
+                'buyTPHistoryView',
+                'buyTPHistoryPagination',
+                (p) => buyTPHistoryCurrentPage = p
+            );
+            lucide.createIcons();
+        }
+
+        function renderDailyEarningHistory(page) {
+            const body = document.getElementById('dailyEarningHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockDailyEarningHistory.slice(startIndex, endIndex);
+            body.innerHTML = paginatedItems.map(renderDailyEarningRow).join('');
+            renderPaginationControls(
+                mockDailyEarningHistory.length,
+                itemsPerPage,
+                page,
+                'dailyEarningHistoryView',
+                'dailyEarningHistoryPagination',
+                (p) => dailyEarningHistoryCurrentPage = p
+            );
+            lucide.createIcons();
+        }
+
+        function renderWeekendEarnHistory(page) {
+            const body = document.getElementById('weekendEarnHistoryBody');
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedItems = mockWeekendEarnHistory.slice(startIndex, endIndex);
+            body.innerHTML = paginatedItems.map(renderWeekendEarnRow).join('');
+            renderPaginationControls(
+                mockWeekendEarnHistory.length,
+                itemsPerPage,
+                page,
+                'weekendEarnHistoryView',
+                'weekendEarnHistoryPagination',
+                (p) => weekendEarnHistoryCurrentPage = p
+            );
+            lucide.createIcons();
+        }
+        
+        function renderMyTradePower() {
+            const listContainer = document.getElementById('myTPPackagesList');
+            let html = mockUserTPPackages.map(item => {
+                const daysRemaining = Math.max(0, item.daysTotal - item.activeDays);
+                const percentage = Math.min(100, (item.activeDays / item.daysTotal) * 100);
+                const progressColor = percentage < 100 ? 'bg-blue-500' : 'bg-red-500';
+                const statusLabel = daysRemaining > 0 ? `${daysRemaining} Days Left` : 'Expired!';
+                const statusColor = daysRemaining > 0 ? 'text-green-600' : 'text-red-600';
+                const cardBorder = daysRemaining > 0 ? 'border-green-300' : 'border-red-300';
+                
+                const dailyReturn = (item.amount * item.dailyEarning).toFixed(4);
+
+                return `
+                    <div class="bg-white p-5 rounded-2xl shadow-xl border-t-8 ${cardBorder} space-y-3">
+                        <div class="flex justify-between items-center border-b pb-3">
+                            <h3 class="text-2xl font-extrabold text-gray-800">
+                                $${item.amount.toLocaleString()} <span class="text-sm font-medium text-gray-500">TP Package</span>
+                            </h3>
+                            <span class="font-bold text-lg ${statusColor} bg-gray-100 px-3 py-1 rounded-full">${statusLabel}</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm font-medium">
+                            <div class="flex items-center text-gray-700">
+                                <i data-lucide="zap" class="w-4 h-4 mr-1 text-green-500"></i> Daily ROI: <span class="font-bold text-green-600 ml-1">${(item.dailyEarning * 100).toFixed(1)}%</span>
+                            </div>
+                            <div class="flex items-center text-gray-700">
+                                <i data-lucide="dollar-sign" class="w-4 h-4 mr-1 text-purple-500"></i> Daily $ Return: <span class="font-bold text-purple-600 ml-1">$${dailyReturn}</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div class="${progressColor} h-2.5 rounded-full" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>Started: ${item.activeDays} days ago</span>
+                            <span>Total Duration: ${item.daysTotal} days</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (mockUserTPPackages.length === 0) {
+                html = `<p class="text-center text-gray-500 py-10">No active Trade Power packages found. <br> <a href="javascript:void(0)" onclick="navigateTo('buyTPView')" class="text-blue-500 font-semibold">Buy TP Now!</a></p>`;
+            }
+            
+            listContainer.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // ====================================================================
+        // --- 3. TABLE RENDERING AND LOOP MANAGEMENT (Updated for Premium Look) ---
+        // ====================================================================
+
+        function updateAITradingStatusTable(data) {
+            const tableBody = document.getElementById('aiTradingHistoryBody'); 
+            if (!tableBody) return;
+
+            tableBody.innerHTML = ''; 
+
+            if (data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">No profitable trades detected in the last hour.</td></tr>`;
+                return;
+            }
+            
+            data.forEach(item => {
+                const pnlValue = parseFloat(item.leveragedPNL); 
+                
+                // Position Arrow and Color
+                const positionClass = item.position === 'LONG' ? 'text-green-500' : 'text-red-500';
+                const icon = item.position === 'LONG' ? 'arrow-up-right' : 'arrow-down-right'; 
+                const iconClass = item.position === 'LONG' ? 'bg-green-100' : 'bg-red-100';
+
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-100 last:border-b-0 transition-colors hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="py-3 px-3 text-sm font-medium flex items-center">
+                        <span class="mr-2 text-base font-bold text-gray-900">${item.symbol}</span>
+                        <span class="${positionClass} flex items-center font-extrabold text-xs ${iconClass} px-2 py-0.5 rounded-full border border-gray-200">
+                            <i data-lucide="${icon}" class="w-3 h-3 mr-1"></i> ${item.leverage}
+                        </span>
+                    </td>
+                    
+                    <td class="py-3 px-1 text-xs text-gray-500 text-center font-medium">
+                        ${item.entryPrice}
+                        <span class="block font-semibold text-gray-800 text-sm">${item.currentPrice}</span>
+                    </td>
+                    
+                    <td class="py-3 px-3 pnl-cell font-extrabold text-green-600 text-right">
+                        +${pnlValue.toFixed(2)}%
+                    </td>
+                    
+                    <td class="py-3 px-1 text-xs text-gray-500 text-right font-medium" style="line-height: 1;">
+                        ${item.time.substring(0, 5)}<span class="block text-[10px]">UTC</span>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            lucide.createIcons();
+        }
+
+        async function startAITradingDataLoop() {
+            const tableBody = document.getElementById('aiTradingHistoryBody');
+            if (tableBody) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">Loading Live Trading Data...</td></tr>`;
+            }
+
+            let data = await fetchAndCalculatePNL();
+            updateAITradingStatusTable(data);
+            
+            if (!isAITradingLoopRunning) {
+                isAITradingLoopRunning = true;
+                setInterval(async () => {
+                    let newData = await fetchAndCalculatePNL();
+                    updateAITradingStatusTable(newData);
+                }, REFRESH_INTERVAL_MS);
             }
         }
 
+        function renderAITradingStatus() {
+            startAITradingDataLoop();
+        }
 
         // --- General View Navigation and UI Management ---
         function renderHeader(viewId) {
             const header = document.getElementById('header');
             let title = viewTitles[viewId] || 'AiEarn';
             let backButtonHtml = '';
-            
+
             if (viewId !== 'dashboardView') {
-                // Determine the correct view to go back to
                 let backToView = 'dashboardView';
                 if (viewId === 'levelUsersView') {
-                    backToView = 'referEarnView'; // Go back to Refer & Earn from User List
+                    backToView = 'referEarnView';
                 } else if (viewId === 'buyTPHistoryView') {
-                    backToView = 'buyTPView'; // Go back to Buy TP form from History
+                    backToView = 'buyTPView';
                 } else if (viewId === 'weekendEarnHistoryView') {
-                    backToView = 'weekendEarnView'; // Go back to Weekend Earn form from History
-                } else if (viewId === 'buyTPView') {
-                    backToView = 'dashboardView';
-                } else if (viewId === 'referEarnView') {
-                    backToView = 'dashboardView';
+                    backToView = 'weekendEarnView';
                 }
                 
                 backButtonHtml = `
-                    <button onclick="navigateTo('${backToView}')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
-                        <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                    <button onclick="navigateTo('${backToView}')" class="text-gray-500 hover:text-gray-700 p-2 rounded-full">
+                        <i data-lucide="chevron-left" class="w-6 h-6"></i>
                     </button>
                 `;
             }
 
             header.innerHTML = `
-                <div class="max-w-lg mx-auto flex justify-between items-center">
-                    <div class="flex items-center space-x-2">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
                         ${backButtonHtml}
-                        <h1 class="text-xl font-extrabold text-gray-800">${title}</h1>
+                        <h1 class="text-xl font-bold text-gray-900 ml-2">${title}</h1>
                     </div>
-                    <button onclick="console.log('Settings')" class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
-                        <i data-lucide="bell" class="w-6 h-6"></i>
-                    </button>
                 </div>
             `;
             lucide.createIcons();
         }
 
-        function navigateTo(viewId) {
-            // Hide all views
-            document.querySelectorAll('#appContainer > section').forEach(view => {
+        function setActiveNav(viewId) {
+            document.querySelectorAll('footer button').forEach(button => {
+                button.classList.remove('active-nav', 'text-blue-600');
+                button.classList.add('text-gray-500', 'hover:text-blue-500');
+            });
+
+            let targetId;
+            if (viewId === 'dashboardView' || viewId === 'weekendEarnView' || viewId === 'dailyEarningHistoryView') {
+                targetId = 'nav-dashboard';
+            } else if (viewId === 'buyTPView' || viewId === 'buyTPHistoryView') {
+                targetId = 'nav-buy-tp';
+            } else if (viewId === 'referEarnView' || viewId === 'levelUsersView') {
+                targetId = 'nav-refer-earn';
+            } else if (viewId === 'withdrawalView') {
+                targetId = 'nav-withdrawal';
+            } else if (viewId === 'introductionView') {
+                targetId = 'nav-intro';
+            } else {
+                return;
+            }
+            
+            const targetButton = document.getElementById(targetId);
+            if (targetButton) {
+                targetButton.classList.add('active-nav', 'text-blue-600');
+                targetButton.classList.remove('text-gray-500', 'hover:text-blue-500');
+            }
+        }
+
+        function navigateTo(viewId, ...args) {
+            currentPage = viewId;
+            
+            document.querySelectorAll('section[data-view]').forEach(view => {
                 view.classList.remove('view');
                 view.classList.add('hidden-view');
             });
 
-            // Show the target view
-            const newView = document.getElementById(viewId);
-            if (newView) {
-                newView.classList.remove('hidden-view');
-                newView.classList.add('view');
-            } else {
-                console.error(`View ID not found: ${viewId}`);
-                return;
+            const targetView = views[viewId];
+            if (targetView) {
+                targetView.classList.remove('hidden-view');
+                targetView.classList.add('view');
+                window.scrollTo(0, 0); 
             }
-
-            currentPage = viewId;
+            
             renderHeader(viewId);
+            setActiveNav(viewId);
 
-            // --- Special initialization for specific views ---
             if (viewId === 'dashboardView' || viewId === 'weekendEarnView') {
                 checkWeekendEligibility();
             }
-
             if (viewId === 'referEarnView') {
                 populateReferralTable();
+            } else if (viewId === 'levelUsersView') {
+                showLevelUsers(args[0]);
             } else if (viewId === 'weekendEarnHistoryView') {
                 renderWeekendEarnHistory(weekendEarnHistoryCurrentPage);
             } else if (viewId === 'withdrawalView') {
@@ -1486,8 +1712,8 @@
                 }
                 const reinvestBtn = document.getElementById('reinvestButton');
                 if (reinvestBtn) {
-                    reinvestBtn.disabled = false;
-                    reinvestBtn.classList.remove('opacity-50');
+                    reinvestBtn.disabled = MOCK_AVAILABLE_BALANCE < MIN_WITHDRAWAL;
+                    reinvestBtn.classList.toggle('opacity-50', MOCK_AVAILABLE_BALANCE < MIN_WITHDRAWAL);
                 }
                 renderWithdrawalHistory(withdrawalHistoryCurrentPage);
             } else if (viewId === 'buyTPHistoryView') {
@@ -1495,15 +1721,12 @@
             } else if (viewId === 'dailyEarningHistoryView') {
                 renderDailyEarningHistory(dailyEarningHistoryCurrentPage);
             } else if (viewId === 'aiTradingStatusView') {
-                renderAITradingStatus();
+                renderAITradingStatus(); 
             } else if (viewId === 'myTradePowerView') {
                 renderMyTradePower();
             }
         }
 
-
-        // --- Other Feature Logic ---
-        
         const timerElement = document.getElementById('settlement-timer');
         let totalSeconds = (19 * 3600) + (44 * 60) + 22;
 
@@ -1515,65 +1738,39 @@
         }
 
         function updateTimer() {
+            totalSeconds--;
+            if (totalSeconds < 0) {
+                totalSeconds = (24 * 3600) - 1;
+            }
             if (timerElement) {
                 timerElement.textContent = `Settlement time: ${formatTime(totalSeconds)}`;
             }
-
-            if (totalSeconds > 0) {
-                totalSeconds--;
-            } else {
-                totalSeconds = (24 * 3600) - 1; // Reset to almost 24 hours
-                showMessage('Settlement Complete', 'Daily earning settlement has been processed! Your balance has been updated.');
-            }
-        }
-        
-        function showMessage(title, message) {
-            const messageBox = document.createElement('div');
-            messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            messageBox.innerHTML = `
-                <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full text-center transform scale-95 transition-all duration-300 ease-out animate-in fade-in zoom-in">
-                    <h3 class="text-xl font-bold mb-3 text-gray-800">${title}</h3>
-                    <p class="text-gray-600 mb-5">${message}</p>
-                    <button onclick="this.parentNode.parentNode.remove()" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700 transition">OK</button>
-                </div>
-            `;
-            document.body.appendChild(messageBox);
         }
 
-        // 🟢 12. Telegram Web App Initialization Logic
         function initializeTelegramWebApp() {
             if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.ready(); 
                 
-                // Hide main button if it's not needed (standard for mini apps)
-                window.Telegram.WebApp.MainButton.hide();
-
-                // 🟢 Telegram Theme Colors लागू करें
                 const themeParams = window.Telegram.WebApp.themeParams;
                 if (themeParams) {
                     document.documentElement.style.setProperty('--tg-bg-color', themeParams.bg_color || '#f0f2f5');
                     document.documentElement.style.setProperty('--tg-text-color', themeParams.text_color || '#1f2937');
                     document.documentElement.style.setProperty('--tg-hint-color', themeParams.hint_color || '#9ca3af');
                 }
-                
-                // 🟢 User Data प्राप्त करें
-                const userData = window.Telegram.WebApp.initDataUnsafe.user;
-                if (userData) {
-                    TG_INIT_DATA = window.Telegram.WebApp.initDataUnsafe;
-                    TG_USER_ID = userData.id.toString();
-                    
-                    // User का पूरा नाम या Username प्राप्त करें
+
+                if (window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+                    const userData = window.Telegram.WebApp.initDataUnsafe.user;
+                    TG_USER_ID = String(userData.id);
                     let userName = userData.first_name || '';
                     if (userData.last_name) {
-                        userName += ' ' + userData.last_name;
+                        userName += ` ${userData.last_name}`;
                     }
                     if (userData.username) {
                         userName += ` (@${userData.username})`;
                     }
                     TG_USERNAME = userName.trim() || `User_${TG_USER_ID}`;
                 }
-                
-                // 🟢 User ID को Withdrawal View में अपडेट करें
+
                 const userDisplay = document.getElementById('tgUserDisplay');
                 const userLabel = document.getElementById('tgUserLabel');
 
@@ -1582,7 +1779,6 @@
                     userLabel.textContent = `Telegram ID (${TG_USERNAME}):`;
                 }
 
-                // Referral Link को अपडेट करें (यह populateReferralTable() में भी होता है, पर यहाँ भी रखना ठीक है)
                 if (referralLinkInput) {
                     referralLinkInput.value = `https://t.me/${TELEGRAM_BOT_USERNAME}?start=${TG_USER_ID}`;
                 }
@@ -1594,21 +1790,17 @@
 
         // --- Initialization ---
         window.onload = function() {
-            // 🟢 13. Telegram WebApp को initialize करें
             initializeTelegramWebApp(); 
             
-            // Initializing all view elements for navigation logic
             document.querySelectorAll('section[data-view]').forEach(view => {
                 views[view.id] = view;
             });
             
             lucide.createIcons();
-            // Initial check to set the dashboard button state
             checkWeekendEligibility();
-            navigateTo(currentPage); // Initial navigation to dashboardView
+            navigateTo(currentPage);
             setInterval(updateTimer, 1000);
         };
     </script>
 </body>
 </html>
-
